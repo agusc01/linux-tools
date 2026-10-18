@@ -4,7 +4,7 @@ set -eu
 root=$(CDPATH= cd "$(dirname "$0")" && pwd)
 . "$root/lib/common.sh"
 
-modules=fish
+modules=fish,rotate
 dry_run=0
 while [ "$#" -gt 0 ]; do
     case "$1" in

@@ -14,10 +14,11 @@ Mientras el PR está abierto, clonar la rama de desarrollo:
 git clone -b feat/fish-rotate-core https://github.com/agusc01/linux-tools.git
 cd linux-tools
 sh install.sh --list
-sh install.sh --modules fish,rotate --dry-run
+sh install.sh --dry-run
+sh install.sh --verify # Diagnóstico: comprueba archivos y comandos Fish instalados
 ```
 
-La instalación es optativa: `sh install.sh --modules fish,rotate`. Instala una configuración adicional en `~/.config/fish/conf.d/linux-tools.fish`, **sin reemplazar config.fish** ni los alias actuales. Si se detectan funciones de rotación antiguas, se interrumpe para evitar sobrescribirlas.
+La instalación predeterminada `sh install.sh` incorpora **Fish + rotate**, y luego ejecuta una verificación con Fish de que `r0`, `r90`, `r180`, `r270` y `rotar` son reconocidos. Para instalar únicamente Fish usá `sh install.sh --modules fish`. Instala una configuración adicional en `~/.config/fish/conf.d/linux-tools.fish`, **sin reemplazar config.fish** ni los alias actuales. Si se detectan funciones de rotación antiguas, se interrumpe para evitar sobrescribirlas.
 
 Para migrar expresamente las cinco funciones originales de rotate, guardando copia de seguridad de las que se reemplacen:
 
@@ -28,7 +29,8 @@ sh install.sh --modules fish,rotate --migrate-rotate
 Los backups se guardan en `~/.local/state/linux-tools/backups/` (o `$XDG_STATE_HOME/linux-tools/backups/`). No se borran `config.fish`, `fish_aliases.fish`, `fish_variables` ni ningún otro archivo ajeno.
 
 ```sh
-sh uninstall.sh --modules fish,rotate --dry-run
+sh install.sh --verify
+sh uninstall.sh --dry-run
 sh uninstall.sh --modules fish,rotate
 sh tests/check.sh
 ```

@@ -9,6 +9,8 @@ for f in "$root/fish/conf.d/linux-tools.fish" "$root"/fish/functions/*.fish; do
     grep -Fqx '# linux-tools-managed: agusc01/linux-tools' "$f"
     if command -v fish >/dev/null 2>&1; then fish -n "$f"; fi
 done
+# Regresión: el instalador predeterminado DEBE seleccionar también rotate.
+sh "$root/install.sh" --dry-run | grep -q 'r90.fish'
 sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
 
 if [ "$(id -u)" -eq 0 ] || ! command -v fish >/dev/null 2>&1; then
@@ -23,7 +25,10 @@ else
     }
     # config.fish antiguo debe permanecer intacto, incluso después de instalar.
     printf '%s\n' '# Alias antiguos' > "$tmp/home/config/fish/config.fish"
-    setup_env sh "$root/install.sh" --modules fish,rotate >/dev/null
+    # El comando sin opciones instala también rotate (regresión del fallo original).
+    setup_env sh "$root/install.sh" >/dev/null
+    setup_env sh "$root/install.sh" --verify | grep -q 'OK: Fish reconoce r90'
+    setup_env fish -c 'type -q r0; and type -q r90; and type -q r180; and type -q r270; and type -q rotar'
     test -f "$tmp/home/config/fish/conf.d/linux-tools.fish"
     grep -Fqx '# Alias antiguos' "$tmp/home/config/fish/config.fish"
     for name in r0 r90 r180 r270 rotar; do

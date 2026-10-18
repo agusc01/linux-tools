@@ -4,25 +4,31 @@ set -eu
 root=$(CDPATH= cd "$(dirname "$0")" && pwd)
 . "$root/lib/common.sh"
 
-modules=fish
+modules=fish,rotate
 dry_run=0
+verify_only=0
 migrate_rotate=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate] [--dry-run] [--migrate-rotate]'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate] [--dry-run] [--verify] [--migrate-rotate]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
             modules=$2; shift 2 ;;
         --dry-run) dry_run=1; shift ;;
+        --verify) verify_only=1; shift ;;
         --migrate-rotate) migrate_rotate=1; shift ;;
         *) echo "Argumento desconocido: $1" >&2; exit 2 ;;
     esac
 done
 lt_parse_modules "$modules"
-if [ "$dry_run" -eq 0 ]; then
+if [ "$verify_only" -eq 1 ] && [ "$dry_run" -eq 1 ]; then
+    echo 'Error: --verify y --dry-run no pueden combinarse.' >&2
+    exit 2
+fi
+if [ "$dry_run" -eq 0 ] && [ "$verify_only" -eq 0 ]; then
     lt_require_user
     command -v fish >/dev/null 2>&1 || { echo 'Error: Fish es obligatorio. Instalalo mediante apk/apt o linux-setup.' >&2; exit 1; }
 fi
@@ -39,6 +45,45 @@ if [ "$want_rotate" -eq 1 ]; then
     for name in rotar r0 r90 r180 r270; do
         add_plan "fish/functions/$name.fish" "$config_home/fish/functions/$name.fish"
     done
+fi
+
+# Verificación de instalación REAL: no ejecuta r90, evita rotar la pantalla.
+# Fish se inicia en un proceso nuevo, con el mismo HOME y XDG_CONFIG_HOME.
+verify_functions() {
+    failed=0
+    if ! command -v fish >/dev/null 2>&1; then
+        echo 'Error: Fish no está disponible en PATH.' >&2
+        return 1
+    fi
+    if [ ! -f "$config_target" ] || ! lt_source_owned "$config_target"; then
+        echo "Error: falta la configuración administrada: $config_target" >&2
+        failed=1
+    fi
+    if [ "$want_rotate" -eq 1 ]; then
+        for name in rotar r0 r90 r180 r270; do
+            target="$config_home/fish/functions/$name.fish"
+            if [ ! -f "$target" ] || ! lt_source_owned "$target"; then
+                echo "Error: falta la función instalada: $target" >&2
+                failed=1
+            elif fish -c "type -q $name"; then
+                echo "OK: Fish reconoce $name"
+            else
+                echo "Error: existe $target, pero Fish no reconoce $name." >&2
+                failed=1
+            fi
+        done
+    else
+        echo 'Rotación: no seleccionada (--modules fish,rotate para incluirla).'
+    fi
+    if [ "$failed" -ne 0 ]; then
+        echo 'Diagnóstico: ejecutá fish -c "printf \"%s\\n\" \$fish_function_path" para ver dónde busca Fish.' >&2
+        return 1
+    fi
+    echo 'Verificación correcta.'
+}
+if [ "$verify_only" -eq 1 ]; then
+    verify_functions
+    exit $?
 fi
 
 migration_kind() {
@@ -125,4 +170,10 @@ if [ "$want_rotate" -eq 1 ]; then
         fi
     done
 fi
-echo 'Listo. Abrí una nueva sesión Fish.'
+if [ "$dry_run" -eq 1 ]; then
+    echo "Módulos simulados: fish$([ "$want_rotate" -eq 1 ] && printf ', rotate')."
+    exit 0
+fi
+echo "Módulos instalados: fish$([ "$want_rotate" -eq 1 ] && printf ', rotate')."
+verify_functions || exit 1
+echo 'Listo. Las funciones de Fish están disponibles sin reiniciar la sesión.'
