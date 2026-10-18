@@ -4,7 +4,7 @@ Herramientas personales y configuración de Fish para Alpine Linux y Debian.
 
 **Disponible en main:** Fish, rotación táctil, controles de volumen y brillo. El audio prepara ALSA automáticamente cuando falta un backend operativo (con permiso previo). Todavía faltan Rofi, dbar, Wi-Fi, Bluetooth y dshortcuts.
 
-Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. En Alpine 3.24, Fish se encuentra en el repositorio **main**; no requiere community. linux-tools no instala paquetes del sistema ni cambia la shell predeterminada.
+Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. En Alpine 3.24, Fish se encuentra en el repositorio **main**; no requiere community. linux-tools puede instalar paquetes del sistema cuando se selecciona un módulo que los necesita y el usuario lo autoriza. No cambia la shell predeterminada ni requiere ejecutar el instalador completo como root.
 
 ## Instalación
 
