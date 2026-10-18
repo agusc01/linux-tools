@@ -39,7 +39,7 @@ lt_audio_cherrytrail_report() {
     fi
     echo 'Hardware detectado: Intel Cherry Trail 808622A8 + códec NAU8824 (10508824).'
     case "$(lt_audio_acpi_status)" in
-        15) echo 'BIOS/UEFI: audio ACPI habilitado (estado 15).' ;;
+        15) echo 'BIOS/UEFI: LPE Audio ACPI mode habilitado (estado 15).' ;;
         0) echo 'ATENCIÓN: audio ACPI deshabilitado (estado 0). Revisá BIOS > Chipset > Audio Configuration > LPE Audio ACPI mode; no se cambia automáticamente.' ;;
         *) echo 'ATENCIÓN: estado ACPI distinto de 15. Comprobá el modo LPE Audio en la BIOS.' ;;
     esac
