@@ -14,7 +14,7 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
@@ -60,6 +60,14 @@ fi
 if [ "$want_brightness" -eq 1 ]; then
     add_plan 'bin/lt-brightness' "$HOME/.local/bin/lt-brightness"
     add_plan 'fish/functions/lt_brightness.fish' "$config_home/fish/functions/lt_brightness.fish"
+fi
+if [ "$want_wifi" -eq 1 ]; then
+    add_plan 'bin/lt-wifi' "$HOME/.local/bin/lt-wifi"
+    add_plan 'fish/functions/lt_wifi.fish' "$config_home/fish/functions/lt_wifi.fish"
+fi
+if [ "$want_bluetooth" -eq 1 ]; then
+    add_plan 'bin/lt-bluetooth' "$HOME/.local/bin/lt-bluetooth"
+    add_plan 'fish/functions/lt_bluetooth.fish' "$config_home/fish/functions/lt_bluetooth.fish"
 fi
 
 # Verificación de instalación REAL: no ejecuta r90, evita rotar la pantalla.
@@ -131,6 +139,27 @@ verify_functions() {
             echo 'OK: lt_brightness y ejecutable lt-brightness'
         fi
     fi
+    if [ "$want_wifi" -eq 1 ]; then
+        if [ ! -x "$HOME/.local/bin/lt-wifi" ] || ! lt_source_owned "$HOME/.local/bin/lt-wifi" ||
+           ! fish -c 'type -q lt_wifi' || ! command -v nmcli >/dev/null 2>&1; then
+            echo 'Error: falta lt-wifi, función Fish o dependencia nmcli.' >&2
+            failed=1
+        else
+            echo 'OK: lt-wifi instalado; NetworkManager se comprueba por separado.'
+            if ! nmcli -t -f RUNNING general 2>/dev/null | grep -qx running; then
+                echo 'Aviso: NetworkManager no está activo; no se interrumpió la red existente.' >&2
+            fi
+        fi
+    fi
+    if [ "$want_bluetooth" -eq 1 ]; then
+        if [ ! -x "$HOME/.local/bin/lt-bluetooth" ] || ! lt_source_owned "$HOME/.local/bin/lt-bluetooth" ||
+           ! fish -c 'type -q lt_bluetooth' || ! command -v bluetoothctl >/dev/null 2>&1; then
+            echo 'Error: falta lt-bluetooth, función Fish o dependencia bluetoothctl.' >&2
+            failed=1
+        else
+            echo 'OK: lt-bluetooth y BlueZ instalados; la presencia de adaptador se comprueba por separado.'
+        fi
+    fi
     if [ "$failed" -ne 0 ]; then
         echo 'Diagnóstico: ejecutá fish -c "printf \"%s\\n\" \$fish_function_path" para ver dónde busca Fish.' >&2
         return 1
@@ -185,6 +214,20 @@ if [ "$want_audio" -eq 1 ] && [ "$skip_deps" -eq 0 ]; then
     else
         sh "$root/lib/audio-setup.sh"
     fi
+fi
+if [ "$skip_deps" -eq 0 ]; then
+    for connectivity in wifi bluetooth; do
+        if { [ "$connectivity" = wifi ] && [ "$want_wifi" -eq 1 ]; } ||
+           { [ "$connectivity" = bluetooth ] && [ "$want_bluetooth" -eq 1 ]; }; then
+            if [ "$dry_run" -eq 1 ]; then
+                sh "$root/lib/connectivity-setup.sh" --module "$connectivity" --dry-run
+            elif [ "$assume_yes" -eq 1 ]; then
+                sh "$root/lib/connectivity-setup.sh" --module "$connectivity" --yes
+            else
+                sh "$root/lib/connectivity-setup.sh" --module "$connectivity"
+            fi
+        fi
+    done
 fi
 if [ "$dry_run" -eq 1 ]; then
     echo 'Simulación: no se modificará ningún archivo.'
@@ -244,16 +287,20 @@ selected='fish'
 [ "$want_rotate" -eq 0 ] || selected="$selected, rotate"
 [ "$want_audio" -eq 0 ] || selected="$selected, audio"
 [ "$want_brightness" -eq 0 ] || selected="$selected, brightness"
+[ "$want_wifi" -eq 0 ] || selected="$selected, wifi"
+[ "$want_bluetooth" -eq 0 ] || selected="$selected, bluetooth"
 if [ "$dry_run" -eq 1 ]; then
     echo "Módulos simulados: $selected."
     exit 0
 fi
 echo "Módulos instalados: $selected."
-if [ "$skip_deps" -eq 1 ] && [ "$want_audio" -eq 1 ]; then
+if [ "$skip_deps" -eq 1 ] && { [ "$want_audio" -eq 1 ] || [ "$want_wifi" -eq 1 ] || [ "$want_bluetooth" -eq 1 ]; }; then
     echo 'Aviso: --no-deps omitió deliberadamente la configuración del sistema de audio.'
     echo 'Para completar la instalación: sh install.sh --modules audio'
     # Comprobar que los ejecutables se instalaron sin fingir que hay audio operativo.
-    [ -x "$HOME/.local/bin/lt-volume" ] || exit 1
+    if [ "$want_audio" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-volume" ] || exit 1; fi
+    if [ "$want_wifi" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-wifi" ] || exit 1; fi
+    if [ "$want_bluetooth" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-bluetooth" ] || exit 1; fi
 else
     verify_functions || exit 1
 fi

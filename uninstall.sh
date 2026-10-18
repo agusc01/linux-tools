@@ -8,7 +8,7 @@ modules=fish,rotate
 dry_run=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness] [--dry-run]'; exit 0 ;;
+        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth] [--dry-run]'; exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
             modules=$2; shift 2 ;;
@@ -43,6 +43,16 @@ if [ "$want_brightness" -eq 1 ]; then
 $HOME/.local/bin/lt-brightness
 $config_home/fish/functions/lt_brightness.fish"
 fi
+if [ "$want_wifi" -eq 1 ]; then
+    plan="$plan
+$HOME/.local/bin/lt-wifi
+$config_home/fish/functions/lt_wifi.fish"
+fi
+if [ "$want_bluetooth" -eq 1 ]; then
+    plan="$plan
+$HOME/.local/bin/lt-bluetooth
+$config_home/fish/functions/lt_bluetooth.fish"
+fi
 while IFS= read -r target; do
     [ -n "$target" ] || continue
     if [ -L "$target" ]; then
@@ -60,4 +70,4 @@ while IFS= read -r target; do
 done <<EOF
 $plan
 EOF
-echo 'Listo. No se desinstaló Fish ni se borraron backups.'
+echo 'Listo. No se desinstaló Fish, no se modificaron los servicios de red/Bluetooth ni se borraron backups.'

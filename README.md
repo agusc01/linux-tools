@@ -135,3 +135,32 @@ El programa comprueba que haya una tarjeta NAU8824, pide confirmación, conserva
 El módulo `audio` instala `lt-audio-save` en `~/.local/bin` y las bibliotecas `admin-paths.sh` / `audio-hardware.sh` en `~/.local/share/linux-tools/lib/`. El comando localiza estas bibliotecas por su ubicación (no depende de ejecutar desde el repositorio ni de Bash). `sh install.sh --modules audio --verify` confirma que el comando instalado puede iniciarse realmente.
 
 Si instalaste una versión antigua que mostraba `can't open .../.local/lib/admin-paths.sh`, actualizá `main` y repetí `sh install.sh --modules audio`: instalará las bibliotecas faltantes sin tocar tus controles ALSA existentes. Después ejecutá `lt-audio-save save` y `lt-audio-save export \"$HOME/nau8824-working.state\"`.
+
+## Wi-Fi y Bluetooth (independientes de Bash)
+
+Los comandos antiguos se conservan sin sobrescribirse. Nuevos comandos portables:
+
+```sh
+sh install.sh --modules wifi,bluetooth --dry-run
+sh install.sh --modules wifi,bluetooth
+lt-wifi status
+lt-wifi list
+lt-wifi connect "NOMBRE DE RED"
+lt-wifi off
+lt-wifi on
+lt-bluetooth status
+lt-bluetooth devices
+lt-bluetooth scan 8
+lt-bluetooth power on
+lt-bluetooth pair AA:BB:CC:DD:EE:FF
+lt-bluetooth trust AA:BB:CC:DD:EE:FF
+lt-bluetooth connect AA:BB:CC:DD:EE:FF
+```
+
+Fish expone `lt_wifi` y `lt_bluetooth`. La contraseña de Wi-Fi se introduce interactivamente con `nmcli --ask`: **no se escribe en el historial ni en un argumento del proceso**. Bluetooth utiliza direcciones MAC, no búsquedas por nombres aproximados. Los escaneos finalizan tras 1–30 segundos, sin matar procesos ajenos.
+
+**Alpine**: BlueZ y D-Bus se instalan desde `main` y se habilitan sus servicios OpenRC si seleccionaste Bluetooth. Para Wi-Fi, NetworkManager/nmcli se instala con `community` de la **misma versión estable** de Alpine como repositorio temporal (sin alterar `/etc/apk/repositories`), solo con consentimiento.
+
+**Importante, no perder conectividad:** instalar el cliente `nmcli` **no habilita ni sustituye automáticamente** `wpa_supplicant`, `networking` u otro servicio que ya gestiona Internet. Si NetworkManager no está operativo, `lt-wifi` explica el motivo y la migración queda pendiente. Consultá la [guía de NetworkManager de Alpine](https://wiki.alpinelinux.org/wiki/NetworkManager) antes de parar servicios o migrar conexiones. Tampoco se desinstalan los paquetes ni se apagan servicios al quitar funciones de linux-tools.
+
+Bluetooth no instala audio inalámbrico en ALSA automáticamente: BlueZ gestiona el emparejamiento; el audio Bluetooth requiere configurar un servidor compatible (PipeWire/PulseAudio o bluez-alsa) por separado. El módulo `doas` continúa fuera de linux-tools.
