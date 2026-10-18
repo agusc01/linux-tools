@@ -121,5 +121,5 @@ else
     echo 'Aviso: dependencias preparadas pero todavía no hay una salida de audio accesible.' >&2
     echo 'Probá: aplay -l; alsamixer; id -nG; cat /proc/asound/cards' >&2
     echo 'Si se modificó el grupo audio, iniciá una nueva sesión y repetí lt-volume status.' >&2
-    exit 3
+    echo 'Los archivos de linux-tools se instalarán, pero la verificación final seguirá marcando el audio como no disponible.' >&2
 fi
