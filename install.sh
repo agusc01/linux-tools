@@ -8,11 +8,13 @@ modules=fish,rotate
 dry_run=0
 verify_only=0
 migrate_rotate=0
+skip_deps=0
+assume_yes=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness] [--dry-run] [--verify] [--migrate-rotate]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
@@ -20,6 +22,8 @@ while [ "$#" -gt 0 ]; do
         --dry-run) dry_run=1; shift ;;
         --verify) verify_only=1; shift ;;
         --migrate-rotate) migrate_rotate=1; shift ;;
+        --no-deps) skip_deps=1; shift ;;
+        --yes) assume_yes=1; shift ;;
         *) echo "Argumento desconocido: $1" >&2; exit 2 ;;
     esac
 done
@@ -92,6 +96,14 @@ verify_functions() {
             failed=1
         else
             echo 'OK: lt_audio y ejecutable lt-volume'
+            if "$HOME/.local/bin/lt-volume" status >/dev/null 2>&1; then
+                echo "OK: backend de audio operativo: $("$HOME/.local/bin/lt-volume" status)"
+            else
+                echo 'Error: el comando está instalado, pero no hay audio operativo.' >&2
+                echo 'Diagnóstico: aplay -l; alsamixer; id -nG' >&2
+                echo 'Reparación: sh install.sh --modules audio' >&2
+                failed=1
+            fi
         fi
     fi
     if [ "$want_brightness" -eq 1 ]; then
@@ -148,6 +160,18 @@ done <<EOF
 $plan
 EOF
 
+# Las dependencias forman parte de la instalación, no son solo advertencias.
+# Primero se comprueban conflictos. Después se instala el backend del sistema.
+# --no-deps sirve para entornos controlados/pruebas y NO garantiza audio usable.
+if [ "$want_audio" -eq 1 ] && [ "$skip_deps" -eq 0 ]; then
+    if [ "$dry_run" -eq 1 ]; then
+        sh "$root/lib/audio-setup.sh" --dry-run
+    elif [ "$assume_yes" -eq 1 ]; then
+        sh "$root/lib/audio-setup.sh" --yes
+    else
+        sh "$root/lib/audio-setup.sh"
+    fi
+fi
 if [ "$dry_run" -eq 1 ]; then
     echo 'Simulación: no se modificará ningún archivo.'
 fi
@@ -211,5 +235,12 @@ if [ "$dry_run" -eq 1 ]; then
     exit 0
 fi
 echo "Módulos instalados: $selected."
-verify_functions || exit 1
+if [ "$skip_deps" -eq 1 ] && [ "$want_audio" -eq 1 ]; then
+    echo 'Aviso: --no-deps omitió deliberadamente la configuración del sistema de audio.'
+    echo 'Para completar la instalación: sh install.sh --modules audio'
+    # Comprobar que los ejecutables se instalaron sin fingir que hay audio operativo.
+    [ -x "$HOME/.local/bin/lt-volume" ] || exit 1
+else
+    verify_functions || exit 1
+fi
 echo 'Listo. Las funciones de Fish están disponibles sin reiniciar la sesión.'
