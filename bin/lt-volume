@@ -1,0 +1,89 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+set -eu
+export LC_ALL=C
+usage() { echo 'Uso: lt-volume get|status|up|down|set N|mute|unmute|toggle [--notify]' >&2; }
+[ "$#" -ge 1 ] || { usage; exit 2; }
+action=$1; shift
+value=''
+case "$action" in
+    get|status|up|down|mute|unmute|toggle) : ;;
+    set)
+        [ "$#" -ge 1 ] || { usage; exit 2; }
+        value=$1; shift
+        case "$value" in ''|*[!0-9]*) echo 'Error: porcentaje inválido.' >&2; exit 2 ;; esac
+        [ "$value" -le 100 ] || { echo 'Error: volumen máximo 100%.' >&2; exit 2; }
+        value=$(awk -v n="$value" 'BEGIN {printf "%.0f",n}')
+        ;;
+    *) usage; exit 2 ;;
+esac
+notify=0
+if [ "$#" -gt 0 ]; then
+    if [ "$#" -eq 1 ] && [ "$1" = '--notify' ]; then notify=1
+    else usage; exit 2; fi
+fi
+usable() {
+    case "$1" in
+        pulsemixer) command -v pulsemixer >/dev/null 2>&1 && pulsemixer --get-volume >/dev/null 2>&1 ;;
+        wpctl) command -v wpctl >/dev/null 2>&1 && wpctl get-volume @DEFAULT_AUDIO_SINK@ >/dev/null 2>&1 ;;
+        pactl) command -v pactl >/dev/null 2>&1 && pactl get-sink-volume @DEFAULT_SINK@ >/dev/null 2>&1 ;;
+        *) return 1 ;;
+    esac
+}
+backend=$(printenv LT_AUDIO_BACKEND || :)
+if [ -n "$backend" ]; then
+    usable "$backend" || { echo "Error: backend no disponible: $backend" >&2; exit 1; }
+else
+    for candidate in pulsemixer wpctl pactl; do
+        if usable "$candidate"; then backend=$candidate; break; fi
+    done
+    [ -n "$backend" ] || { echo 'Error: faltan pulsemixer, wpctl o pactl (o su servidor de audio).' >&2; exit 1; }
+fi
+volume() {
+    case "$backend" in
+        pulsemixer) pulsemixer --get-volume | awk 'NR==1{print $1;exit}' ;;
+        wpctl) wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk 'NR==1{printf "%.0f\n",$2*100;exit}' ;;
+        pactl) pactl get-sink-volume @DEFAULT_SINK@ | awk '{for(i=1;i<=NF;i++)if($i~/^[0-9]+%$/){gsub(/%/,"",$i);print $i;exit}}' ;;
+    esac
+}
+muted() {
+    case "$backend" in
+        pulsemixer) [ "$(pulsemixer --get-mute)" = 1 ] ;;
+        wpctl) wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q '\[MUTED\]' ;;
+        pactl) pactl get-sink-mute @DEFAULT_SINK@ | grep -q yes ;;
+    esac
+}
+set_level() {
+    case "$backend" in
+        pulsemixer) pulsemixer --set-volume "$1" ;;
+        wpctl) wpctl set-volume --limit 1.0 @DEFAULT_AUDIO_SINK@ "$1%" ;;
+        pactl) pactl set-sink-volume @DEFAULT_SINK@ "$1%" ;;
+    esac
+}
+set_mute() {
+    case "$backend" in
+        pulsemixer)
+            case "$1" in 1) pulsemixer --mute ;; 0) pulsemixer --unmute ;; toggle) pulsemixer --toggle-mute ;; esac ;;
+        wpctl) wpctl set-mute @DEFAULT_AUDIO_SINK@ "$1" ;;
+        pactl) pactl set-sink-mute @DEFAULT_SINK@ "$1" ;;
+    esac
+}
+case "$action" in
+    get) volume; exit 0 ;;
+    status) : ;;
+    up|down)
+        current=$(volume)
+        case "$current" in ''|*[!0-9]*) echo 'Error: nivel actual inválido.' >&2; exit 1 ;; esac
+        if [ "$action" = up ]; then delta=10; else delta=-10; fi
+        target=$(awk -v n="$current" -v d="$delta" 'BEGIN{r=n+d;if(r<0)r=0;if(r>100)r=100;printf "%.0f",r}')
+        set_level "$target" ;;
+    set) set_level "$value" ;;
+    mute) set_mute 1 ;;
+    unmute) set_mute 0 ;;
+    toggle) set_mute toggle ;;
+esac
+if muted; then state=muted; else state=unmuted; fi
+current=$(volume)
+status="Volumen: $current% ($state)"
+printf '%s\n' "$status"
+if [ "$notify" -eq 1 ] && command -v notify-send >/dev/null 2>&1; then notify-send 'Audio' "$status" || :; fi
