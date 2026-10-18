@@ -20,7 +20,7 @@ lt_parse_modules "$modules"
 [ "$dry_run" -eq 1 ] || lt_require_user
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
-plan="$config_home/fish/config.fish"
+plan="$config_home/fish/conf.d/linux-tools.fish"
 if [ "$want_rotate" -eq 1 ]; then
     for name in rotar r0 r90 r180 r270; do
         plan="$plan

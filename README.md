@@ -2,27 +2,30 @@
 
 Herramientas personales y configuración de Fish para Alpine Linux y Debian.
 
-**Primera entrega (rama de desarrollo):** configuración de Fish y migración de las funciones de rotación de pantalla/táctil desde [rotate](https://github.com/agusc01/rotate). Todavía no están migrados Rofi, dbar, audio, Wi-Fi, Bluetooth ni dshortcuts.
+**Primera entrega (rama de desarrollo):** configuración modular Fish y migración de las funciones de rotación de pantalla/táctil desde [rotate](https://github.com/agusc01/rotate). Todavía no están migrados Rofi, dbar, audio, Wi-Fi, Bluetooth ni dshortcuts.
 
-Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. linux-tools no instala paquetes del sistema ni cambia la shell predeterminada.
+Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. En Alpine 3.24, Fish se encuentra en el repositorio **main**; no requiere community. linux-tools no instala paquetes del sistema ni cambia la shell predeterminada.
 
-## Instalar sin root
+## Probar sin root
+
+Mientras el PR está abierto, clonar la rama de desarrollo:
 
 ```sh
-git clone https://github.com/agusc01/linux-tools.git
+git clone -b feat/fish-rotate-core https://github.com/agusc01/linux-tools.git
 cd linux-tools
 sh install.sh --list
 sh install.sh --modules fish,rotate --dry-run
-sh install.sh --modules fish,rotate
 ```
 
-Si ya tenés la configuración del repositorio anterior de Fish o las funciones de rotate, se detendrá con un conflicto. Para migrar **voluntariamente**, guardando backup:
+La instalación es optativa: `sh install.sh --modules fish,rotate`. Instala una configuración adicional en `~/.config/fish/conf.d/linux-tools.fish`, **sin reemplazar config.fish** ni los alias actuales. Si se detectan funciones de rotación antiguas, se interrumpe para evitar sobrescribirlas.
+
+Para migrar expresamente las cinco funciones originales de rotate, guardando copia de seguridad de las que se reemplacen:
 
 ```sh
-sh install.sh --modules fish,rotate --migrate-fish --migrate-rotate
+sh install.sh --modules fish,rotate --migrate-rotate
 ```
 
-Los backups se guardan bajo ~/.local/state/linux-tools/backups/. No se borran archivos extra (fish_aliases.fish, fish_variables, etc.).
+Los backups se guardan en `~/.local/state/linux-tools/backups/` (o `$XDG_STATE_HOME/linux-tools/backups/`). No se borran `config.fish`, `fish_aliases.fish`, `fish_variables` ni ningún otro archivo ajeno.
 
 ```sh
 sh uninstall.sh --modules fish,rotate --dry-run
@@ -32,10 +35,12 @@ sh tests/check.sh
 
 ## Rotación
 
-Comandos Fish: r0, r90, r180, r270; también rotar normal|derecha|invertida|izquierda. Requiere Xorg, xrandr, xinput. Permite configurar ROTATE_OUTPUT y ROTATE_TOUCH, y no conserva IDs del táctil entre reinicios.
+Comandos Fish: `r0`, `r90`, `r180`, `r270` y `rotar normal|derecha|invertida|izquierda`. Requiere Xorg, xrandr y xinput. Permite `ROTATE_OUTPUT` y `ROTATE_TOUCH`; los IDs del táctil se detectan dinámicamente.
 
-## Diseño
+## Diseño y pendientes
 
-La configuración de Fish no carga alias Bash. Cada módulo tiene propiedad identificable; se rechazan enlaces simbólicos y archivos no administrados. El repositorio original rotate permanece intacto hasta finalizar la migración. Repositorios archivados dbar, dmenu y surf no se copiarán. Las funcionalidades de dbar y menús Rofi se migrarán desde los scripts activos de Bash.
+La configuración **nueva** no carga Bash, pero la configuración **antigua** de Fish sigue intacta hasta que migremos sus alias y utilidades. El instalador hace verificación previa de propiedad de todos los archivos, rechaza enlaces simbólicos y archivos ajenos, y permite simular operaciones sin cambios. Los repositorios originales no se archivan aún.
+
+Los antiguos repositorios archivados dbar, dmenu y surf no se copian. Se migrará **la barra propia desde los scripts activos de Bash**, junto con menús Rofi y demás utilidades.
 
 **No usar en producción sin revisar antes el dry-run.**

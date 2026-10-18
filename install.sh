@@ -6,19 +6,17 @@ root=$(CDPATH= cd "$(dirname "$0")" && pwd)
 
 modules=fish
 dry_run=0
-migrate_fish=0
 migrate_rotate=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate] [--dry-run] [--migrate-fish] [--migrate-rotate]'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate] [--dry-run] [--migrate-rotate]'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
             modules=$2; shift 2 ;;
         --dry-run) dry_run=1; shift ;;
-        --migrate-fish) migrate_fish=1; shift ;;
         --migrate-rotate) migrate_rotate=1; shift ;;
         *) echo "Argumento desconocido: $1" >&2; exit 2 ;;
     esac
@@ -30,13 +28,13 @@ if [ "$dry_run" -eq 0 ]; then
 fi
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
-config_target="$config_home/fish/config.fish"
+config_target="$config_home/fish/conf.d/linux-tools.fish"
 plan=''
 add_plan() {
     plan="$plan
 $1|$2"
 }
-add_plan 'fish/config.fish' "$config_target"
+add_plan 'fish/conf.d/linux-tools.fish' "$config_target"
 if [ "$want_rotate" -eq 1 ]; then
     for name in rotar r0 r90 r180 r270; do
         add_plan "fish/functions/$name.fish" "$config_home/fish/functions/$name.fish"
@@ -45,9 +43,7 @@ fi
 
 migration_kind() {
     target=$1
-    if [ "$target" = "$config_target" ] && [ "$migrate_fish" -eq 1 ]; then
-        printf '%s\n' fish
-    elif [ "$migrate_rotate" -eq 1 ] && lt_old_rotate "$target"; then
+    if [ "$migrate_rotate" -eq 1 ] && lt_old_rotate "$target"; then
         printf '%s\n' rotate
     else
         printf '%s\n' ''
@@ -69,7 +65,7 @@ while IFS='|' read -r relative target; do
     if [ -f "$target" ] && ! lt_source_owned "$target"; then
         kind=$(migration_kind "$target")
         if [ -z "$kind" ]; then
-            echo "Conflicto: $target existe y es ajeno. Usá las opciones --migrate-* si corresponde." >&2
+            echo "Conflicto: $target existe y es ajeno. Usá --migrate-rotate solamente para funciones antiguas de rotate." >&2
             exit 1
         fi
     fi
