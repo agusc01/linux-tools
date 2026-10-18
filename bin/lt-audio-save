@@ -1,0 +1,42 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Guardar configuración ALSA una vez comprobado sonido real.
+set -eu
+root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
+. "$root/lib/admin-paths.sh"
+. "$root/lib/audio-hardware.sh"
+
+case "${1:-}" in
+    status)
+        lt_audio_cherrytrail_report
+        echo 'Para guardar la mezcla que acabás de comprobar: lt-audio-save save'
+        exit 0 ;;
+    save) : ;;
+    --dry-run) echo 'Guardaría la mezcla ALSA actual en /var/lib/alsa/asound.state con alsactl store (como root).'; exit 0 ;;
+    *)
+        echo 'Uso: lt-audio-save status|save|--dry-run' >&2
+        exit 2 ;;
+esac
+[ "$#" -eq 1 ] || { echo 'Error: demasiados argumentos.' >&2; exit 2; }
+command -v amixer >/dev/null 2>&1 || { echo 'Error: falta alsa-utils.' >&2; exit 1; }
+if lt_cherrytrail_nau8824 && ! lt_audio_internal_card; then
+    echo 'Error: el hardware NAU8824 no aparece en ALSA. No se guardarán controles de una tarjeta HDMI por error.' >&2
+    exit 1
+fi
+binary=$(lt_admin_path alsactl) || exit 1
+echo 'Guardando los controles de ALSA actualmente configurados (todos los dispositivos).'
+if [ "$(id -u)" -eq 0 ]; then
+    "$binary" store
+elif command -v doas >/dev/null 2>&1; then
+    doas "$binary" store
+elif command -v sudo >/dev/null 2>&1; then
+    sudo "$binary" store
+else
+    echo 'Error: ejecutá "su -" y luego "alsactl store" como root.' >&2
+    exit 1
+fi
+echo 'Estado guardado. OpenRC alsa lo restaurará en los próximos arranques si el servicio está habilitado.'
+if command -v rc-update >/dev/null 2>&1; then
+    rc-update show default | grep -q '[[:space:]]alsa[[:space:]]' ||
+        echo 'Aviso: comprobá que esté habilitado el servicio: doas /sbin/rc-update add alsa default' >&2
+fi
