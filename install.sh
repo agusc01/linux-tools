@@ -53,6 +53,8 @@ fi
 if [ "$want_audio" -eq 1 ]; then
     add_plan 'bin/lt-volume' "$HOME/.local/bin/lt-volume"
     add_plan 'bin/lt-audio-save' "$HOME/.local/bin/lt-audio-save"
+    add_plan 'lib/admin-paths.sh' "$HOME/.local/share/linux-tools/lib/admin-paths.sh"
+    add_plan 'lib/audio-hardware.sh' "$HOME/.local/share/linux-tools/lib/audio-hardware.sh"
     add_plan 'fish/functions/lt_audio.fish' "$config_home/fish/functions/lt_audio.fish"
 fi
 if [ "$want_brightness" -eq 1 ]; then
@@ -91,7 +93,16 @@ verify_functions() {
     if [ "$want_audio" -eq 1 ]; then
         if [ ! -x "$HOME/.local/bin/lt-volume" ] || ! lt_source_owned "$HOME/.local/bin/lt-volume" ||
              [ ! -x "$HOME/.local/bin/lt-audio-save" ] || ! lt_source_owned "$HOME/.local/bin/lt-audio-save"; then
-            echo 'Error: falta el ejecutable lt-volume.' >&2
+            echo 'Error: falta lt-volume o lt-audio-save.' >&2
+            failed=1
+        elif [ ! -f "$HOME/.local/share/linux-tools/lib/admin-paths.sh" ] ||
+             ! lt_source_owned "$HOME/.local/share/linux-tools/lib/admin-paths.sh" ||
+             [ ! -f "$HOME/.local/share/linux-tools/lib/audio-hardware.sh" ] ||
+             ! lt_source_owned "$HOME/.local/share/linux-tools/lib/audio-hardware.sh"; then
+            echo 'Error: faltan las bibliotecas instaladas de lt-audio-save.' >&2
+            failed=1
+        elif ! "$HOME/.local/bin/lt-audio-save" status >/dev/null 2>&1; then
+            echo 'Error: lt-audio-save está instalado pero no puede cargar sus bibliotecas.' >&2
             failed=1
         elif ! fish -c 'type -q lt_audio; and command -sq lt-volume'; then
             echo 'Error: Fish no reconoce lt_audio.' >&2

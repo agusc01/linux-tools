@@ -34,6 +34,8 @@ if [ "$want_audio" -eq 1 ]; then
     plan="$plan
 $HOME/.local/bin/lt-volume
 $HOME/.local/bin/lt-audio-save
+$HOME/.local/share/linux-tools/lib/admin-paths.sh
+$HOME/.local/share/linux-tools/lib/audio-hardware.sh
 $config_home/fish/functions/lt_audio.fish"
 fi
 if [ "$want_brightness" -eq 1 ]; then

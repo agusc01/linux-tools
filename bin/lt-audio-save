@@ -2,9 +2,22 @@
 # linux-tools-managed: agusc01/linux-tools
 # Respaldar y restaurar la mezcla ALSA que ya se comprobó funcional.
 set -eu
-root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-. "$root/lib/admin-paths.sh"
-. "$root/lib/audio-hardware.sh"
+# El comando funciona tanto desde el checkout (bin/ y lib/) como desde
+# ~/.local/bin con bibliotecas en ~/.local/share/linux-tools/lib.
+# No se depende del directorio de trabajo ni del PATH de Fish.
+script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
+if [ -f "$script_dir/../lib/admin-paths.sh" ] &&
+   [ -f "$script_dir/../lib/audio-hardware.sh" ]; then
+    lib_dir="$script_dir/../lib"
+elif [ -f "$script_dir/../share/linux-tools/lib/admin-paths.sh" ] &&
+     [ -f "$script_dir/../share/linux-tools/lib/audio-hardware.sh" ]; then
+    lib_dir="$script_dir/../share/linux-tools/lib"
+else
+    echo 'Error: faltan las bibliotecas de lt-audio-save. Reinstalá con: sh install.sh --modules audio' >&2
+    exit 1
+fi
+. "$lib_dir/admin-paths.sh"
+. "$lib_dir/audio-hardware.sh"
 usage() {
     printf '%s\n' \
         'Uso: lt-audio-save status|save|--dry-run' \
