@@ -27,23 +27,53 @@ usable() {
         pulsemixer) command -v pulsemixer >/dev/null 2>&1 && pulsemixer --get-volume >/dev/null 2>&1 ;;
         wpctl) command -v wpctl >/dev/null 2>&1 && wpctl get-volume @DEFAULT_AUDIO_SINK@ >/dev/null 2>&1 ;;
         pactl) command -v pactl >/dev/null 2>&1 && pactl get-sink-volume @DEFAULT_SINK@ >/dev/null 2>&1 ;;
+        alsa)
+            command -v amixer >/dev/null 2>&1 || return 1
+            control=$(alsa_control) || return 1
+            amixer sget "$control" >/dev/null 2>&1
+            ;;
         *) return 1 ;;
     esac
+}
+# ALSA permite controlar volumen sin un servidor de audio externo.
+# Se elige un control utilizable; en algunos equipos no existe "Master".
+alsa_control() {
+    if [ -n "${LT_ALSA_CONTROL:-}" ]; then
+        amixer sget "$LT_ALSA_CONTROL" >/dev/null 2>&1 || return 1
+        printf '%s\n' "$LT_ALSA_CONTROL"
+        return 0
+    fi
+    for candidate in Master Speaker PCM Headphone; do
+        if amixer sget "$candidate" >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
 }
 backend=$(printenv LT_AUDIO_BACKEND || :)
 if [ -n "$backend" ]; then
     usable "$backend" || { echo "Error: backend no disponible: $backend" >&2; exit 1; }
 else
-    for candidate in pulsemixer wpctl pactl; do
+    for candidate in pulsemixer wpctl pactl alsa; do
         if usable "$candidate"; then backend=$candidate; break; fi
     done
-    [ -n "$backend" ] || { echo 'Error: faltan pulsemixer, wpctl o pactl (o su servidor de audio).' >&2; exit 1; }
+    [ -n "$backend" ] || { echo 'Error: no hay un backend de audio operativo (PulseAudio, PipeWire o ALSA).' >&2
+        echo 'Ejecutá: cd linux-tools && sh install.sh --modules audio' >&2
+        echo 'Si amixer está instalado, revisá la tarjeta con: aplay -l y alsamixer' >&2
+        exit 1; }
 fi
 volume() {
     case "$backend" in
         pulsemixer) pulsemixer --get-volume | awk 'NR==1{print $1;exit}' ;;
         wpctl) wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk 'NR==1{printf "%.0f\n",$2*100;exit}' ;;
         pactl) pactl get-sink-volume @DEFAULT_SINK@ | awk '{for(i=1;i<=NF;i++)if($i~/^[0-9]+%$/){gsub(/%/,"",$i);print $i;exit}}' ;;
+        alsa)
+            amixer sget "$control" | awk '
+                /\[[0-9]+%\]/ {
+                    for(i=1;i<=NF;i++)if($i~/^\[[0-9]+%\]$/){gsub(/\[|\]|%/,"",$i);print $i;exit}
+                }'
+            ;;
     esac
 }
 muted() {
@@ -51,6 +81,17 @@ muted() {
         pulsemixer) [ "$(pulsemixer --get-mute)" = 1 ] ;;
         wpctl) wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q '\[MUTED\]' ;;
         pactl) pactl get-sink-mute @DEFAULT_SINK@ | grep -q yes ;;
+        alsa)
+            # Mute solo si todos los canales reportan apagado.
+            amixer sget "$control" | awk '
+                /\[(on|off)\]/ {
+                    for(i=1;i<=NF;i++) {
+                        if($i=="[on]") on=1
+                        if($i=="[off]") off=1
+                    }
+                }
+                END { if(off && !on)exit 0;exit 1 }'
+            ;;
     esac
 }
 set_level() {
@@ -58,6 +99,7 @@ set_level() {
         pulsemixer) pulsemixer --set-volume "$1" ;;
         wpctl) wpctl set-volume --limit 1.0 @DEFAULT_AUDIO_SINK@ "$1%" ;;
         pactl) pactl set-sink-volume @DEFAULT_SINK@ "$1%" ;;
+        alsa) amixer -q sset "$control" "$1%" ;;
     esac
 }
 set_mute() {
@@ -66,6 +108,13 @@ set_mute() {
             case "$1" in 1) pulsemixer --mute ;; 0) pulsemixer --unmute ;; toggle) pulsemixer --toggle-mute ;; esac ;;
         wpctl) wpctl set-mute @DEFAULT_AUDIO_SINK@ "$1" ;;
         pactl) pactl set-sink-mute @DEFAULT_SINK@ "$1" ;;
+        alsa)
+            case "$1" in
+                1) amixer -q sset "$control" mute ;;
+                0) amixer -q sset "$control" unmute ;;
+                toggle) amixer -q sset "$control" toggle ;;
+            esac
+            ;;
     esac
 }
 case "$action" in
