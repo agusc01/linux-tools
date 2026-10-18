@@ -5,7 +5,7 @@
 lt_admin_path() {
     [ "$#" -eq 1 ] || return 2
     case "$1" in
-        apk|apt-get|rc-service|rc-update|addgroup) : ;;
+        apk|apt-get|rc-service|rc-update|addgroup|alsactl) : ;;
         *) echo "Error: comando administrativo no permitido: $1" >&2; return 2 ;;
     esac
     for directory in /sbin /usr/sbin /usr/bin /bin; do

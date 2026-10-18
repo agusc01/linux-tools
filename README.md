@@ -90,3 +90,23 @@ lt-volume status
 Pruebas con servicios simulados: `sh tests/audio-brightness.sh`.
 
 **Comando correcto:** `lt-volume status` (con guion y sin traducir `volume`). Si instalaste una versión anterior, actualizá `main` y ejecutá `sh install.sh --modules audio`. Esta operación conserva las funciones Fish, detecta el sistema de audio y ofrece instalar ALSA mediante `apk` o `apt-get`; no habilita `community` por su cuenta.
+
+
+## Reinstalación del audio Cherry Trail + NAU8824 (Intel Atom x5-Z8350)
+
+Este procedimiento reproduce el caso comprobado con Alpine en la notebook Cherry Trail: ACPI `808622A8:00`, códec I²C `10508824:00` y SOF `sof-cht.ri` + `sof-cht-nau8824.tplg`.
+
+1. **Una sola vez en BIOS/UEFI:** `Chipset → Audio Configuration → LPE Audio Support → LPE Audio ACPI mode`. **No** cambiar automáticamente la BIOS ni usar `driver_override`. Si quedó en PCI Mode, el script advierte estado ACPI `0`; debería ser `15`.
+2. Instalación como usuario normal, con `doas`, `sudo` o `su` ya configurado:
+   ```sh
+   sh install.sh --modules audio --dry-run
+   sh install.sh --modules audio
+   ```
+   Detecta el hardware por los dos IDs; instala paquetes ALSA y, **solo si a este hardware le falta el firmware**, instala `sof-firmware` de `community` de la **misma versión estable de Alpine**, con `apk --repository` temporal. No modifica los repositorios configurados ni instala firmware Cherry Trail en otros equipos.
+3. **Reiniciar** si se acaba de instalar `sof-firmware`, y comprobar `aplay -l`; debe aparecer `nau8824` además de HDMI.
+4. **Ajustar los controles reales una vez** con `alsamixer -c 0` (F5, localizar `Speaker`, quitar `MM` con M y subir gradualmente) y comprobar la salida con `speaker-test -D plughw:0,0 -c 2 -r 48000 -t wav -l 1`, volumen moderado.
+5. **Guardar la mezcla que comprobaste**, como usuario normal: `lt-audio-save save`. Usa `alsactl store` mediante elevación puntual y el servicio OpenRC `alsa` la restaurará en los próximos arranques. `lt-audio-save status` muestra el estado del hardware y el firmware.
+
+No se fijan valores de volumen desconocidos ni se fuerza `Speaker` sobre todas las máquinas. El estado guardado en `/var/lib/alsa/asound.state` pertenece a esa instalación: **en una reinstalación con disco nuevo habrá que volver a ajustar el mezclador una vez**, a menos que se conserve también ese estado mediante un backup propio. El instalador puede automatizar los paquetes y la detección, pero no adivinar una mezcla que nunca se exportó al repositorio.
+
+El módulo **no instala ni configura doas**. Un comando `doas: apk: command not found` está resuelto mediante rutas absolutas (`/sbin/apk`).

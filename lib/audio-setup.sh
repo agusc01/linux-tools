@@ -4,6 +4,7 @@
 set -eu
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 . "$root/lib/admin-paths.sh"
+. "$root/lib/audio-hardware.sh"
 dry_run=0
 yes=0
 while [ "$#" -gt 0 ]; do
@@ -24,10 +25,17 @@ case "${ID:-}" in
     *) echo "Error: distribución no soportada: ${ID:-desconocida}" >&2; exit 1 ;;
 esac
 
-# Comprueba audio REAL, no basta con que el comando exista.
+# Detectar hardware ANTES de considerar suficiente el HDMI u otro backend.
+# Un servidor de audio operativo puede ocultar que faltan parlantes internos.
 audio_ready() { "$root/bin/lt-volume" status >/dev/null 2>&1; }
-if audio_ready; then
-    echo 'Audio: backend operativo. No hace falta instalar otro.'
+sof_missing=0
+if [ "$manager" = apk ] && lt_cherrytrail_nau8824; then
+    lt_audio_cherrytrail_report
+    if ! lt_audio_sof_ready; then sof_missing=1; fi
+fi
+if audio_ready && [ "$sof_missing" -eq 0 ]; then
+    echo 'Audio: backend operativo y firmware requerido presente.'
+    echo 'Para conservar tus ajustes del mezclador: lt-audio-save save (después de probar los parlantes).'
     exit 0
 fi
 
@@ -63,7 +71,20 @@ if [ "$manager" = apk ] && lt_admin_path rc-service >/dev/null 2>&1; then
     needs_service=1
 fi
 
-echo "Audio: $manager; ALSA (en el repositorio main de Alpine)."
+echo "Audio: $manager; ALSA (en el repositorio main de Alpine)." 
+sof_repo=''
+if [ "$sof_missing" -eq 1 ]; then
+    # No mezclar paquetes de edge y stable; obtener la rama desde os-release.
+    major=${VERSION_ID%%.*}
+    minor_part=${VERSION_ID#*.}
+    minor=${minor_part%%.*}
+    case "$major:$minor" in
+        *[!0-9:]*|:*|*:) echo 'Error: no se pudo determinar la versión estable de Alpine para instalar sof-firmware.' >&2; exit 1 ;;
+    esac
+    sof_repo="https://dl-cdn.alpinelinux.org/alpine/v$major.$minor/community"
+    echo "Firmware SOF necesario: sof-firmware (repositorio temporal $sof_repo)."
+    echo 'No se habilitará community permanentemente.'
+fi
 if [ -n "$packages" ]; then
     echo "Paquetes a instalar: $packages"
 else
@@ -120,6 +141,17 @@ if [ -n "$packages" ]; then
         as_root apt-get install -y $packages
     fi
 fi
+if [ "$sof_missing" -eq 1 ]; then
+    # --repository afecta solamente esta operación; preserva /etc/apk/repositories.
+    as_root apk add --no-cache --repository "$sof_repo" sof-firmware
+    if lt_audio_sof_ready; then
+        echo 'OK: firmware sof-cht.ri y topología sof-cht-nau8824.tplg encontrados.'
+    else
+        echo 'Error: sof-firmware se instaló pero no proporciona los dos archivos requeridos.' >&2
+        exit 1
+    fi
+    echo 'IMPORTANTE: reiniciá para que SOF vuelva a detectar la tarjeta NAU8824.'
+fi
 if [ "$needs_group" -eq 1 ]; then
     if lt_admin_path addgroup >/dev/null 2>&1; then
         as_root addgroup "$username" audio
@@ -143,4 +175,14 @@ else
     echo 'Probá: aplay -l; alsamixer; id -nG; cat /proc/asound/cards' >&2
     echo 'Si se modificó el grupo audio, iniciá una nueva sesión y repetí lt-volume status.' >&2
     echo 'Los archivos de linux-tools se instalarán, pero la verificación final seguirá marcando el audio como no disponible.' >&2
+fi
+if [ "$manager" = apk ] && lt_cherrytrail_nau8824; then
+    if [ "$(lt_audio_acpi_status)" != 15 ]; then
+        echo 'ATENCIÓN: configurá LPE Audio ACPI mode desde la BIOS; no es posible automatizarlo.' >&2
+    fi
+    if ! lt_audio_internal_card; then
+        echo 'ATENCIÓN: aún no aparece NAU8824 en ALSA. Reiniciá y verificá con aplay -l.' >&2
+    else
+        echo 'NAU8824 detectado. Probá alsamixer -c 0, speaker-test, y guardá con lt-audio-save save.'
+    fi
 fi

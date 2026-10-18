@@ -52,6 +52,7 @@ if [ "$want_rotate" -eq 1 ]; then
 fi
 if [ "$want_audio" -eq 1 ]; then
     add_plan 'bin/lt-volume' "$HOME/.local/bin/lt-volume"
+    add_plan 'bin/lt-audio-save' "$HOME/.local/bin/lt-audio-save"
     add_plan 'fish/functions/lt_audio.fish' "$config_home/fish/functions/lt_audio.fish"
 fi
 if [ "$want_brightness" -eq 1 ]; then
@@ -88,7 +89,8 @@ verify_functions() {
         echo 'Rotación: no seleccionada (--modules fish,rotate para incluirla).'
     fi
     if [ "$want_audio" -eq 1 ]; then
-        if [ ! -x "$HOME/.local/bin/lt-volume" ] || ! lt_source_owned "$HOME/.local/bin/lt-volume"; then
+        if [ ! -x "$HOME/.local/bin/lt-volume" ] || ! lt_source_owned "$HOME/.local/bin/lt-volume" ||
+             [ ! -x "$HOME/.local/bin/lt-audio-save" ] || ! lt_source_owned "$HOME/.local/bin/lt-audio-save"; then
             echo 'Error: falta el ejecutable lt-volume.' >&2
             failed=1
         elif ! fish -c 'type -q lt_audio; and command -sq lt-volume'; then
@@ -102,6 +104,7 @@ verify_functions() {
                 echo 'Error: el comando está instalado, pero no hay audio operativo.' >&2
                 echo 'Diagnóstico: aplay -l; alsamixer; id -nG' >&2
                 echo 'Reparación: sh install.sh --modules audio' >&2
+                echo 'Cherry Trail: tras instalar firmware SOF es obligatorio reiniciar; verificá BIOS LPE Audio ACPI mode.' >&2
                 failed=1
             fi
         fi
