@@ -20,7 +20,7 @@ lt_parse_modules() {
     remaining=$requested
     while [ -n "$remaining" ]; do
         case "$remaining" in
-            *,*) part=\${remaining%%,*}; remaining=\${remaining#*,} ;;
+            *,*) part=${remaining%%,*}; remaining=${remaining#*,} ;;
             *) part=$remaining; remaining='' ;;
         esac
         case "$part" in

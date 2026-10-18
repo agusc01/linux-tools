@@ -29,7 +29,7 @@ if [ "$dry_run" -eq 0 ]; then
     command -v fish >/dev/null 2>&1 || { echo 'Error: Fish es obligatorio. Instalalo mediante apk/apt o linux-setup.' >&2; exit 1; }
 fi
 
-config_home=\${XDG_CONFIG_HOME:-"$HOME/.config"}
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
 config_target="$config_home/fish/config.fish"
 plan=''
 add_plan() {
@@ -104,7 +104,7 @@ while IFS='|' read -r relative target; do
     fi
     if [ -n "$kind" ]; then
         if [ -z "$backup_dir" ]; then
-            backup_base=\${XDG_STATE_HOME:-"$HOME/.local/state"}/linux-tools/backups
+            backup_base=${XDG_STATE_HOME:-"$HOME/.local/state"}/linux-tools/backups
             mkdir -p "$backup_base"
             backup_dir=$(mktemp -d "$backup_base/migration.XXXXXXXX")
         fi
