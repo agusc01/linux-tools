@@ -110,3 +110,22 @@ Este procedimiento reproduce el caso comprobado con Alpine en la notebook Cherry
 No se fijan valores de volumen desconocidos ni se fuerza `Speaker` sobre todas las máquinas. El estado guardado en `/var/lib/alsa/asound.state` pertenece a esa instalación: **en una reinstalación con disco nuevo habrá que volver a ajustar el mezclador una vez**, a menos que se conserve también ese estado mediante un backup propio. El instalador puede automatizar los paquetes y la detección, pero no adivinar una mezcla que nunca se exportó al repositorio.
 
 El módulo **no instala ni configura doas**. Un comando `doas: apk: command not found` está resuelto mediante rutas absolutas (`/sbin/apk`).
+
+
+### Conservar exactamente los controles de la notebook para una reinstalación
+
+Una vez que los parlantes funcionen, además de `lt-audio-save save` (estado persistente local), exportá la mezcla:
+
+```sh
+lt-audio-save export "$HOME/nau8824-working.state"
+```
+
+El respaldo se genera con permiso 0600, **no sobrescribe uno existente** y no requiere root si el usuario tiene acceso a ALSA. Guardalo en otra unidad o repositorio privado. No se incluye un estado de volumen genérico, porque algunos controles de entrada/salida dependen de la placa.
+
+Luego de una **nueva instalación** con LPE Audio ACPI, firmware SOF y `nau8824` visibles en `aplay -l`, restauralo voluntariamente:
+
+```sh
+lt-audio-save restore "$HOME/nau8824-working.state"
+```
+
+El programa comprueba que haya una tarjeta NAU8824, pide confirmación, conserva el estado anterior y guarda la restauración para los próximos reinicios. No restaura respaldos automáticamente ni escribe perfiles para hardware desconocido.

@@ -15,6 +15,7 @@ sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
 sh "$root/install.sh" --modules fish,rotate,audio,brightness --dry-run | grep -q lt-volume
 sh "$root/tests/audio-brightness.sh"
 sh "$root/tests/cherrytrail-audio.sh"
+sh "$root/tests/audio-profiles.sh"
 sh "$root/tests/admin-paths.sh"
 
 # Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.

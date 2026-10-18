@@ -1,42 +1,108 @@
 #!/bin/sh
 # linux-tools-managed: agusc01/linux-tools
-# Guardar configuración ALSA una vez comprobado sonido real.
+# Respaldar y restaurar la mezcla ALSA que ya se comprobó funcional.
 set -eu
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 . "$root/lib/admin-paths.sh"
 . "$root/lib/audio-hardware.sh"
-
-case "${1:-}" in
+usage() {
+    printf '%s\n' \
+        'Uso: lt-audio-save status|save|--dry-run' \
+        '     lt-audio-save export /RUTA/backup-nau8824.state' \
+        '     lt-audio-save restore /RUTA/backup-nau8824.state' >&2
+}
+action=${1:-}
+case "$action" in
     status)
+        [ "$#" -eq 1 ] || { usage; exit 2; }
         lt_audio_cherrytrail_report
-        echo 'Para guardar la mezcla que acabás de comprobar: lt-audio-save save'
+        echo 'Guardá la mezcla actual con "lt-audio-save save"; exportala con "lt-audio-save export /RUTA/archivo.state".'
         exit 0 ;;
-    save) : ;;
-    --dry-run) echo 'Guardaría la mezcla ALSA actual en /var/lib/alsa/asound.state con alsactl store (como root).'; exit 0 ;;
-    *)
-        echo 'Uso: lt-audio-save status|save|--dry-run' >&2
-        exit 2 ;;
+    --dry-run)
+        [ "$#" -eq 1 ] || { usage; exit 2; }
+        echo 'Guardaría la mezcla ALSA actual en /var/lib/alsa/asound.state mediante alsactl store.'
+        exit 0 ;;
+    save)
+        [ "$#" -eq 1 ] || { usage; exit 2; } ;;
+    export|restore)
+        [ "$#" -eq 2 ] || { usage; exit 2; }
+        profile=$2
+        case "$profile" in
+            /*) : ;;
+            *) echo 'Error: el archivo de perfil debe tener una ruta absoluta.' >&2; exit 2 ;;
+        esac
+        ;;
+    *) usage; exit 2 ;;
 esac
-[ "$#" -eq 1 ] || { echo 'Error: demasiados argumentos.' >&2; exit 2; }
-command -v amixer >/dev/null 2>&1 || { echo 'Error: falta alsa-utils.' >&2; exit 1; }
+
 if lt_cherrytrail_nau8824 && ! lt_audio_internal_card; then
-    echo 'Error: el hardware NAU8824 no aparece en ALSA. No se guardarán controles de una tarjeta HDMI por error.' >&2
+    echo 'Error: la tarjeta NAU8824 no aparece en ALSA. No se modificó ningún estado.' >&2
     exit 1
 fi
 binary=$(lt_admin_path alsactl) || exit 1
-echo 'Guardando los controles de ALSA actualmente configurados (todos los dispositivos).'
-if [ "$(id -u)" -eq 0 ]; then
-    "$binary" store
-elif command -v doas >/dev/null 2>&1; then
-    doas "$binary" store
-elif command -v sudo >/dev/null 2>&1; then
-    sudo "$binary" store
-else
-    echo 'Error: ejecutá "su -" y luego "alsactl store" como root.' >&2
-    exit 1
+
+if [ "$action" = export ]; then
+    if [ -e "$profile" ] || [ -L "$profile" ]; then
+        echo 'Error: el respaldo ya existe. No se sobrescribe.' >&2
+        exit 1
+    fi
+    directory=$(dirname "$profile")
+    [ -d "$directory" ] || { echo "Error: el directorio de destino no existe: $directory" >&2; exit 1; }
+    tmp=$(mktemp "$directory/.lt-audio-state.XXXXXXXX")
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    # Exportar SIN root: el usuario ya pertenece al grupo audio.
+    if ! "$binary" -f "$tmp" store; then
+        echo 'Error: no se pudo exportar el estado ALSA. Revisá los permisos del grupo audio.' >&2
+        exit 1
+    fi
+    chmod 600 "$tmp"
+    mv "$tmp" "$profile"
+    trap - EXIT HUP INT TERM
+    echo "Mezcla exportada: $profile"
+    echo 'Guardá este archivo fuera de la notebook (backup o repositorio privado) para una reinstalación.'
+    exit 0
 fi
-echo 'Estado guardado. OpenRC alsa lo restaurará en los próximos arranques si el servicio está habilitado.'
+
+# Solo se elevan los comandos que escriben el estado ALSA.
+as_root_alsactl() {
+    if [ "$(id -u)" -eq 0 ]; then "$binary" "$@"
+    elif command -v doas >/dev/null 2>&1; then doas "$binary" "$@"
+    elif command -v sudo >/dev/null 2>&1; then sudo "$binary" "$@"
+    else
+        echo 'Error: necesitás doas/sudo; alternativamente entrá con su - y ejecutá alsactl manualmente.' >&2
+        return 1
+    fi
+}
+if [ "$action" = restore ]; then
+    if [ -L "$profile" ] || [ ! -f "$profile" ] || [ ! -r "$profile" ]; then
+        echo 'Error: el respaldo no es un archivo regular legible.' >&2
+        exit 1
+    fi
+    if ! grep -iq nau8824 "$profile"; then
+        echo 'Error: el respaldo no identifica controles NAU8824. No se aplicará a otra tarjeta.' >&2
+        exit 1
+    fi
+    if ! lt_audio_internal_card; then
+        echo 'Error: restauración NAU8824 requiere que el kernel detecte esa tarjeta.' >&2
+        exit 1
+    fi
+    [ -t 0 ] || { echo 'Error: la restauración necesita confirmación interactiva.' >&2; exit 2; }
+    echo "Se restaurarán controles ALSA desde $profile."
+    echo 'La mezcla actual se guardará primero en /var/lib/alsa/asound.state.'
+    printf '¿Continuar? [s/N]: '
+    IFS= read -r answer || answer=''
+    case "$answer" in s|S|si|Si|SI) : ;; *) echo 'Cancelado.'; exit 2 ;; esac
+    as_root_alsactl store
+    as_root_alsactl -f "$profile" restore
+    as_root_alsactl store
+    echo 'Mezcla restaurada y guardada para próximos arranques.'
+    exit 0
+fi
+
+echo 'Guardando los controles ALSA actualmente configurados (todos los dispositivos).'
+as_root_alsactl store
+echo 'Estado guardado. OpenRC alsa lo restaurará al arrancar, si el servicio está habilitado.'
 if command -v rc-update >/dev/null 2>&1; then
     rc-update show default | grep -q '[[:space:]]alsa[[:space:]]' ||
-        echo 'Aviso: comprobá que esté habilitado el servicio: doas /sbin/rc-update add alsa default' >&2
+        echo 'Aviso: verificá el servicio: doas /sbin/rc-update add alsa default' >&2
 fi
