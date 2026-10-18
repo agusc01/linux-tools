@@ -12,6 +12,8 @@ done
 # Regresión: el instalador predeterminado DEBE seleccionar también rotate.
 sh "$root/install.sh" --dry-run | grep -q 'r90.fish'
 sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
+sh "$root/install.sh" --modules fish,rotate,audio,brightness --dry-run | grep -q lt-volume
+sh "$root/tests/audio-brightness.sh"
 
 if [ "$(id -u)" -eq 0 ] || ! command -v fish >/dev/null 2>&1; then
     echo 'Integración omitida (requiere Fish y usuario no root).'
@@ -37,6 +39,15 @@ else
 
     # Segunda instalación no cambia nada.
     setup_env sh "$root/install.sh" --modules fish,rotate | grep -q 'Sin cambios'
+    # Los módulos nuevos se instalan por separado sin borrar los originales.
+    setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness >/dev/null
+    setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_audio'
+    setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_brightness'
+    test -x "$tmp/home/.local/bin/lt-volume"
+    test -x "$tmp/home/.local/bin/lt-brightness"
+    setup_env sh "$root/uninstall.sh" --modules audio,brightness >/dev/null
+    test ! -e "$tmp/home/.local/bin/lt-volume"
+    test ! -e "$tmp/home/.local/bin/lt-brightness"
     setup_env sh "$root/uninstall.sh" --modules fish,rotate >/dev/null
     test ! -e "$tmp/home/config/fish/conf.d/linux-tools.fish"
     test ! -e "$tmp/home/config/fish/functions/rotar.fish"
