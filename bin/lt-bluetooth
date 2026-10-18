@@ -1,0 +1,45 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# BlueZ CLI. Sin eval, parsing de nombres, kill/pgrep ni escaneos persistentes.
+set -eu
+usage() {
+    echo 'Uso: lt-bluetooth status|devices|paired|scan [SEGUNDOS]|power on|off|connect MAC|disconnect MAC|pair MAC|trust MAC|untrust MAC|remove MAC' >&2
+}
+action=${1:-}
+[ "$#" -gt 0 ] || { usage; exit 2; }
+shift
+case "$action" in
+    status|devices|paired) [ "$#" -eq 0 ] || { usage; exit 2; } ;;
+    scan)
+        [ "$#" -le 1 ] || { usage; exit 2; }
+        seconds=${1:-8}
+        case "$seconds" in ''|*[!0-9]*) usage; exit 2 ;; esac
+        [ "$seconds" -ge 1 ] && [ "$seconds" -le 30 ] ||
+            { echo 'Error: el escaneo debe durar entre 1 y 30 segundos.' >&2; exit 2; } ;;
+    power) [ "$#" -eq 1 ] || { usage; exit 2; }
+        case "$1" in on|off) : ;; *) usage; exit 2 ;; esac ;;
+    connect|disconnect|pair|trust|untrust|remove)
+        [ "$#" -eq 1 ] || { usage; exit 2; }
+        case "$1" in
+            ??\:??\:??\:??\:??\:??) : ;;
+            *) echo 'Error: dirección Bluetooth MAC inválida.' >&2; exit 2 ;;
+        esac
+        if ! printf '%s\n' "$1" | grep -Eq '^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$'; then
+            echo 'Error: MAC Bluetooth inválida.' >&2; exit 2
+        fi ;;
+    *) usage; exit 2 ;;
+esac
+if ! command -v bluetoothctl >/dev/null 2>&1; then
+    echo 'Error: falta bluetoothctl. Instalá el módulo bluetooth con linux-tools.' >&2
+    exit 1
+fi
+case "$action" in
+    status) bluetoothctl show ;;
+    devices) bluetoothctl devices ;;
+    paired) bluetoothctl devices Paired 2>/dev/null || bluetoothctl paired-devices ;;
+    scan)
+        # Se usa timeout integrado en bluetoothctl, no procesos de fondo.
+        bluetoothctl --timeout "$seconds" scan on ;;
+    power) bluetoothctl power "$1" ;;
+    *) bluetoothctl "$action" "$1" ;;
+esac

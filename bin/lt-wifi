@@ -1,0 +1,38 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# NetworkManager (nmcli): nunca maneja claves en argumentos del proceso.
+set -eu
+export LC_ALL=C
+usage() {
+    echo 'Uso: lt-wifi status|list|connections|on|off|connect SSID|disconnect IFACE' >&2
+}
+action=${1:-}
+[ "$#" -gt 0 ] || { usage; exit 2; }
+shift
+case "$action" in
+    status|list|connections|on|off) [ "$#" -eq 0 ] || { usage; exit 2; } ;;
+    connect|disconnect) [ "$#" -eq 1 ] && [ -n "$1" ] || { usage; exit 2; } ;;
+    *) usage; exit 2 ;;
+esac
+if ! command -v nmcli >/dev/null 2>&1; then
+    echo 'Error: falta nmcli. Instalá el módulo wifi con linux-tools.' >&2
+    exit 1
+fi
+if ! nmcli -t -f RUNNING general 2>/dev/null | grep -qx running; then
+    echo 'Error: NetworkManager no está operativo. No se modificarán servicios de red automáticamente.' >&2
+    echo 'En Alpine revisá el servicio networkmanager y sus conflictos con networking/wpa_supplicant.' >&2
+    exit 1
+fi
+case "$action" in
+    status)
+        nmcli -f WIFI general
+        nmcli -f DEVICE,TYPE,STATE,CONNECTION device status ;;
+    list)
+        nmcli -f IN-USE,SSID,SECURITY,SIGNAL device wifi list --rescan yes ;;
+    connections) nmcli -f NAME,TYPE,DEVICE connection show ;;
+    on|off) nmcli radio wifi "$action" ;;
+    connect)
+        # --ask solicita contraseña a la terminal sin ponerla en historial o ps.
+        nmcli --ask device wifi connect "$1" ;;
+    disconnect) nmcli device disconnect "$1" ;;
+esac
