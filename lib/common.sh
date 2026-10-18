@@ -15,6 +15,7 @@ lt_require_user() {
 }
 lt_parse_modules() {
     requested=$1
+    want_fish=0
     want_rotate=0
     want_audio=0
     want_brightness=0
@@ -26,7 +27,7 @@ lt_parse_modules() {
             *) part=$remaining; remaining='' ;;
         esac
         case "$part" in
-            fish) : ;;
+            fish) want_fish=1 ;;
             rotate) want_rotate=1 ;;
             audio) want_audio=1 ;;
             brightness) want_brightness=1 ;;

@@ -46,6 +46,9 @@ else
     test -x "$tmp/home/.local/bin/lt-volume"
     test -x "$tmp/home/.local/bin/lt-brightness"
     setup_env sh "$root/uninstall.sh" --modules audio,brightness >/dev/null
+    # Desinstalar módulos opcionales no debe eliminar la configuración Fish.
+    test -f "$tmp/home/config/fish/conf.d/linux-tools.fish"
+    test -f "$tmp/home/config/fish/functions/rotar.fish"
     test ! -e "$tmp/home/.local/bin/lt-volume"
     test ! -e "$tmp/home/.local/bin/lt-brightness"
     setup_env sh "$root/uninstall.sh" --modules fish,rotate >/dev/null

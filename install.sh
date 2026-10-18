@@ -87,7 +87,7 @@ verify_functions() {
         if [ ! -x "$HOME/.local/bin/lt-volume" ] || ! lt_source_owned "$HOME/.local/bin/lt-volume"; then
             echo 'Error: falta el ejecutable lt-volume.' >&2
             failed=1
-        elif ! fish -c 'type -q lt_audio'; then
+        elif ! fish -c 'type -q lt_audio; and command -sq lt-volume'; then
             echo 'Error: Fish no reconoce lt_audio.' >&2
             failed=1
         else
@@ -98,7 +98,7 @@ verify_functions() {
         if [ ! -x "$HOME/.local/bin/lt-brightness" ] || ! lt_source_owned "$HOME/.local/bin/lt-brightness"; then
             echo 'Error: falta el ejecutable lt-brightness.' >&2
             failed=1
-        elif ! fish -c 'type -q lt_brightness'; then
+        elif ! fish -c 'type -q lt_brightness; and command -sq lt-brightness'; then
             echo 'Error: Fish no reconoce lt_brightness.' >&2
             failed=1
         else
