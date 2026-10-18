@@ -129,3 +129,9 @@ lt-audio-save restore "$HOME/nau8824-working.state"
 ```
 
 El programa comprueba que haya una tarjeta NAU8824, pide confirmación, conserva el estado anterior y guarda la restauración para los próximos reinicios. No restaura respaldos automáticamente ni escribe perfiles para hardware desconocido.
+
+### Comando de audio instalado y sus dependencias
+
+El módulo `audio` instala `lt-audio-save` en `~/.local/bin` y las bibliotecas `admin-paths.sh` / `audio-hardware.sh` en `~/.local/share/linux-tools/lib/`. El comando localiza estas bibliotecas por su ubicación (no depende de ejecutar desde el repositorio ni de Bash). `sh install.sh --modules audio --verify` confirma que el comando instalado puede iniciarse realmente.
+
+Si instalaste una versión antigua que mostraba `can't open .../.local/lib/admin-paths.sh`, actualizá `main` y repetí `sh install.sh --modules audio`: instalará las bibliotecas faltantes sin tocar tus controles ALSA existentes. Después ejecutá `lt-audio-save save` y `lt-audio-save export \"$HOME/nau8824-working.state\"`.

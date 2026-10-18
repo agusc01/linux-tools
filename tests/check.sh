@@ -71,6 +71,14 @@ EOF
     setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_audio'
     setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_brightness'
     test -x "$tmp/home/.local/bin/lt-audio-save"
+    test -f "$tmp/home/.local/share/linux-tools/lib/admin-paths.sh"
+    test -f "$tmp/home/.local/share/linux-tools/lib/audio-hardware.sh"
+    # Regresión: ejecutable instalado fuera del checkout, incluso desde /tmp,
+    # debe resolver sus bibliotecas y no solo tener permiso +x.
+    ( cd / && setup_env sh "$tmp/home/.local/bin/lt-audio-save" status ) |
+        grep -q 'Hardware Cherry Trail'
+    ( cd / && setup_env sh "$tmp/home/.local/bin/lt-audio-save" --dry-run ) |
+        grep -q 'alsactl store'
     test -x "$tmp/home/.local/bin/lt-volume"
     test -x "$tmp/home/.local/bin/lt-brightness"
     setup_env sh "$root/uninstall.sh" --modules audio,brightness >/dev/null
@@ -78,6 +86,8 @@ EOF
     test -f "$tmp/home/config/fish/conf.d/linux-tools.fish"
     test -f "$tmp/home/config/fish/functions/rotar.fish"
     test ! -e "$tmp/home/.local/bin/lt-audio-save"
+    test ! -e "$tmp/home/.local/share/linux-tools/lib/admin-paths.sh"
+    test ! -e "$tmp/home/.local/share/linux-tools/lib/audio-hardware.sh"
     test ! -e "$tmp/home/.local/bin/lt-volume"
     test ! -e "$tmp/home/.local/bin/lt-brightness"
     setup_env sh "$root/uninstall.sh" --modules fish,rotate >/dev/null
