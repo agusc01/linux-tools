@@ -3,7 +3,7 @@
 set -eu
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 
-for script in install.sh uninstall.sh lib/common.sh lib/audio-setup.sh lib/admin-paths.sh tests/check.sh tests/admin-paths.sh; do sh -n "$root/$script"; done
+for script in install.sh uninstall.sh lib/common.sh lib/audio-setup.sh lib/audio-hardware.sh lib/admin-paths.sh tests/check.sh tests/admin-paths.sh; do sh -n "$root/$script"; done
 sh "$root/install.sh" --list | grep -q '^rotate '
 for f in "$root/fish/conf.d/linux-tools.fish" "$root"/fish/functions/*.fish; do
     grep -Fqx '# linux-tools-managed: agusc01/linux-tools' "$f"
@@ -14,6 +14,7 @@ sh "$root/install.sh" --dry-run | grep -q 'r90.fish'
 sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
 sh "$root/install.sh" --modules fish,rotate,audio,brightness --dry-run | grep -q lt-volume
 sh "$root/tests/audio-brightness.sh"
+sh "$root/tests/cherrytrail-audio.sh"
 sh "$root/tests/admin-paths.sh"
 
 # Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.
@@ -68,12 +69,14 @@ EOF
     export PATH LT_AUDIO_BACKEND
     setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_audio'
     setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_brightness'
+    test -x "$tmp/home/.local/bin/lt-audio-save"
     test -x "$tmp/home/.local/bin/lt-volume"
     test -x "$tmp/home/.local/bin/lt-brightness"
     setup_env sh "$root/uninstall.sh" --modules audio,brightness >/dev/null
     # Desinstalar módulos opcionales no debe eliminar la configuración Fish.
     test -f "$tmp/home/config/fish/conf.d/linux-tools.fish"
     test -f "$tmp/home/config/fish/functions/rotar.fish"
+    test ! -e "$tmp/home/.local/bin/lt-audio-save"
     test ! -e "$tmp/home/.local/bin/lt-volume"
     test ! -e "$tmp/home/.local/bin/lt-brightness"
     setup_env sh "$root/uninstall.sh" --modules fish,rotate >/dev/null
