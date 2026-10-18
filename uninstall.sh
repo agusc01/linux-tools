@@ -33,6 +33,7 @@ fi
 if [ "$want_audio" -eq 1 ]; then
     plan="$plan
 $HOME/.local/bin/lt-volume
+$HOME/.local/bin/lt-audio-save
 $config_home/fish/functions/lt_audio.fish"
 fi
 if [ "$want_brightness" -eq 1 ]; then
