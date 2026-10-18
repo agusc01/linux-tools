@@ -2,20 +2,21 @@
 
 Herramientas personales y configuración de Fish para Alpine Linux y Debian.
 
-**Entregas:** Fish y rotación táctil integrados en main. El módulo de audio incluye preparación de dependencias y fallback ALSA en Alpine. Todavía faltan Rofi, dbar, Wi-Fi, Bluetooth y dshortcuts.
+**Disponible en main:** Fish, rotación táctil, controles de volumen y brillo. El audio prepara ALSA automáticamente cuando falta un backend operativo (con permiso previo). Todavía faltan Rofi, dbar, Wi-Fi, Bluetooth y dshortcuts.
 
 Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. En Alpine 3.24, Fish se encuentra en el repositorio **main**; no requiere community. linux-tools no instala paquetes del sistema ni cambia la shell predeterminada.
 
-## Probar sin root
+## Instalación
 
-El siguiente ejemplo usa la rama de audio/brillo mientras se revisa el PR:
+La configuración personal se instala como usuario normal. Los paquetes del sistema se gestionan mediante permisos elevados solamente cuando hace falta:
 
 ```sh
-git clone -b feat/audio-brightness-tools https://github.com/agusc01/linux-tools.git
+git clone https://github.com/agusc01/linux-tools.git
 cd linux-tools
 sh install.sh --list
 sh install.sh --dry-run
-sh install.sh --verify # Diagnóstico: comprueba archivos y comandos Fish instalados
+sh install.sh # Fish y rotación
+sh install.sh --verify
 ```
 
 La instalación predeterminada `sh install.sh` incorpora **Fish + rotate**, y luego ejecuta una verificación con Fish de que `r0`, `r90`, `r180`, `r270` y `rotar` son reconocidos. Para instalar únicamente Fish usá `sh install.sh --modules fish`. Instala una configuración adicional en `~/.config/fish/conf.d/linux-tools.fish`, **sin reemplazar config.fish** ni los alias actuales. Si se detectan funciones de rotación antiguas, se interrumpe para evitar sobrescribirlas.
@@ -47,7 +48,7 @@ Los antiguos repositorios archivados dbar, dmenu y surf no se copian. Se migrar�
 
 **No usar en producción sin revisar antes el dry-run.**
 
-## Audio y brillo (nueva rama)
+## Audio y brillo
 
 Instalá los módulos opcionales sin modificar los alias que ya tenés:
 
@@ -87,3 +88,5 @@ lt-volume status
  Los módulos se pueden desinstalar por separado con `sh uninstall.sh --modules audio,brightness`, que conserva Fish y rotate.
 
 Pruebas con servicios simulados: `sh tests/audio-brightness.sh`.
+
+**Comando correcto:** `lt-volume status` (con guion y sin traducir `volume`). Si instalaste una versión anterior, actualizá `main` y ejecutá `sh install.sh --modules audio`. Esta operación conserva las funciones Fish, detecta el sistema de audio y ofrece instalar ALSA mediante `apk` o `apt-get`; no habilita `community` por su cuenta.
