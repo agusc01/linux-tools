@@ -2,16 +2,16 @@
 
 Herramientas personales y configuración de Fish para Alpine Linux y Debian.
 
-**Primera entrega (rama de desarrollo):** configuración modular Fish y migración de las funciones de rotación de pantalla/táctil desde [rotate](https://github.com/agusc01/rotate). Todavía no están migrados Rofi, dbar, audio, Wi-Fi, Bluetooth ni dshortcuts.
+**Entregas:** Fish y rotación táctil integrados en main. Esta nueva rama incorpora audio y brillo X11 independientes de Bash. Todavía faltan Rofi, dbar, Wi-Fi, Bluetooth y dshortcuts.
 
 Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. En Alpine 3.24, Fish se encuentra en el repositorio **main**; no requiere community. linux-tools no instala paquetes del sistema ni cambia la shell predeterminada.
 
 ## Probar sin root
 
-Mientras el PR está abierto, clonar la rama de desarrollo:
+El siguiente ejemplo usa la rama de audio/brillo mientras se revisa el PR:
 
 ```sh
-git clone -b feat/fish-rotate-core https://github.com/agusc01/linux-tools.git
+git clone -b feat/audio-brightness-tools https://github.com/agusc01/linux-tools.git
 cd linux-tools
 sh install.sh --list
 sh install.sh --dry-run
@@ -46,3 +46,32 @@ La configuración **nueva** no carga Bash, pero la configuración **antigua** de
 Los antiguos repositorios archivados dbar, dmenu y surf no se copian. Se migrará **la barra propia desde los scripts activos de Bash**, junto con menús Rofi y demás utilidades.
 
 **No usar en producción sin revisar antes el dry-run.**
+
+## Audio y brillo (nueva rama)
+
+Instalá los módulos opcionales sin modificar los alias que ya tenés:
+
+```sh
+sh install.sh --modules fish,rotate,audio,brightness --dry-run
+sh install.sh --modules fish,rotate,audio,brightness
+sh install.sh --modules fish,rotate,audio,brightness --verify
+```
+
+Comandos independientes de Bash/Fish:
+
+```sh
+lt-volume get
+lt-volume up --notify
+lt-volume down
+lt-volume set 45
+lt-volume toggle
+lt-brightness status
+lt-brightness down
+lt-brightness set 70 --notify
+```
+
+También están las funciones Fish `lt_audio` y `lt_brightness` con los mismos argumentos. Esto **no reemplaza** todavía las funciones antiguas `s0`, `setsound`, `b0`, etc. La migración de dshortcuts/dwm será posterior.
+
+Audio detecta `pulsemixer`, `wpctl` (PipeWire) o `pactl` (PulseAudio); permite `LT_AUDIO_BACKEND` para elegir. Brillo es atenuación lógica de X11 (requiere `xrandr` y sesión X11), con mínimo de 10% y `LT_DISPLAY_OUTPUT` para elegir monitor. La instalación no agrega paquetes ni toca configuración de audio ni servicios del sistema. Los módulos se pueden desinstalar por separado con `sh uninstall.sh --modules audio,brightness`, que conserva Fish y rotate.
+
+Pruebas con servicios simulados: `sh tests/audio-brightness.sh`.

@@ -8,7 +8,7 @@ modules=fish,rotate
 dry_run=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate] [--dry-run]'; exit 0 ;;
+        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness] [--dry-run]'; exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
             modules=$2; shift 2 ;;
@@ -20,12 +20,25 @@ lt_parse_modules "$modules"
 [ "$dry_run" -eq 1 ] || lt_require_user
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
-plan="$config_home/fish/conf.d/linux-tools.fish"
+plan=''
+if [ "$want_fish" -eq 1 ]; then
+    plan="$config_home/fish/conf.d/linux-tools.fish"
+fi
 if [ "$want_rotate" -eq 1 ]; then
     for name in rotar r0 r90 r180 r270; do
         plan="$plan
 $config_home/fish/functions/$name.fish"
     done
+fi
+if [ "$want_audio" -eq 1 ]; then
+    plan="$plan
+$HOME/.local/bin/lt-volume
+$config_home/fish/functions/lt_audio.fish"
+fi
+if [ "$want_brightness" -eq 1 ]; then
+    plan="$plan
+$HOME/.local/bin/lt-brightness
+$config_home/fish/functions/lt_brightness.fish"
 fi
 while IFS= read -r target; do
     [ -n "$target" ] || continue

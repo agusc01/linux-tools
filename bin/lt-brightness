@@ -1,0 +1,61 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Brillo lógico X11 (xrandr); no cambia la retroiluminación física.
+set -eu
+export LC_ALL=C
+usage() { echo 'Uso: lt-brightness get|status|up|down|set N [--notify] (10..100%)' >&2; }
+[ "$#" -ge 1 ] || { usage; exit 2; }
+action=$1; shift
+value=''
+case "$action" in
+    get|status|up|down) : ;;
+    set)
+        [ "$#" -ge 1 ] || { usage; exit 2; }
+        value=$1; shift
+        case "$value" in ''|*[!0-9]*) echo 'Error: porcentaje inválido.' >&2; exit 2 ;; esac
+        [ "$value" -ge 10 ] && [ "$value" -le 100 ] || { echo 'Error: brillo de 10 a 100%.' >&2; exit 2; }
+        value=$(awk -v n="$value" 'BEGIN {printf "%.0f",n}')
+        ;;
+    *) usage; exit 2 ;;
+esac
+notify=0
+if [ "$#" -gt 0 ]; then
+    if [ "$#" -eq 1 ] && [ "$1" = '--notify' ]; then notify=1
+    else usage; exit 2; fi
+fi
+command -v xrandr >/dev/null 2>&1 || { echo 'Error: falta xrandr.' >&2; exit 1; }
+query=$(xrandr --verbose) || { echo 'Error: no se puede consultar X11. Revisá DISPLAY.' >&2; exit 1; }
+requested=$(printenv LT_DISPLAY_OUTPUT || :)
+display=$(printf '%s\n' "$query" | awk -v requested="$requested" '
+    /^[^[:space:]]/ {
+        inside=0; rank=0; name="";
+        if($2=="connected"){
+            name=$1; inside=1; rank=1;
+            if($0~/ primary /)rank=2;
+            if(name~/^(eDP|LVDS|DSI)/)rank=3;
+        }
+    }
+    inside && /Brightness:/ {
+        for(i=1;i<=NF;i++)if($i=="Brightness:"){v=$(i+1);break}
+        if(requested!="" && name!=requested)next
+        if(rank>best){best=rank; selected=name; level=v}
+    }
+    END{if(selected!="")printf "%s %s\n",selected,level}
+')
+[ -n "$display" ] || { echo 'Error: no se encontró pantalla conectada con brillo configurable.' >&2; exit 1; }
+output=$(printf '%s\n' "$display" | cut -d' ' -f1)
+level=$(printf '%s\n' "$display" | cut -d' ' -f2)
+current=$(awk -v v="$level" 'BEGIN{printf "%.0f",v*100}')
+case "$action" in
+    get) printf '%s\n' "$current"; exit 0 ;;
+    status) printf 'Brillo: %s%% (%s)\n' "$current" "$output"; exit 0 ;;
+    up|down)
+        if [ "$action" = up ]; then delta=10; else delta=-10; fi
+        value=$(awk -v n="$current" -v d="$delta" 'BEGIN{r=n+d;if(r<10)r=10;if(r>100)r=100;printf "%.0f",r}')
+        ;;
+esac
+fraction=$(awk -v p="$value" 'BEGIN{printf "%.2f",p/100}')
+xrandr --output "$output" --brightness "$fraction" || { echo "Error: no se pudo ajustar $output." >&2; exit 1; }
+status="Brillo: $value% ($output)"
+printf '%s\n' "$status"
+if [ "$notify" -eq 1 ] && command -v notify-send >/dev/null 2>&1; then notify-send 'Pantalla' "$status" || :; fi
