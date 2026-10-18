@@ -14,7 +14,7 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness,doas] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
@@ -28,6 +28,24 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 lt_parse_modules "$modules"
+# Bootstrap aislado: doas debe poder instalarse antes de Fish.
+# Como usuario normal, pide contraseña root mediante su -c.
+if [ "$want_doas" -eq 1 ]; then
+    if [ "$verify_only" -eq 1 ]; then
+        if command -v doas >/dev/null 2>&1; then
+            echo 'OK: ejecutable doas disponible. Para verificar permisos ejecutá: doas id -u'
+        else
+            echo 'Error: doas no está instalado.' >&2
+            exit 1
+        fi
+    else
+        set --
+        if [ "$dry_run" -eq 1 ]; then set -- "$@" --dry-run; fi
+        if [ "$assume_yes" -eq 1 ]; then set -- "$@" --yes; fi
+        sh "$root/modules/doas/bootstrap.sh" "$@"
+    fi
+    if [ "$modules" = doas ]; then exit 0; fi
+fi
 if [ "$verify_only" -eq 1 ] && [ "$dry_run" -eq 1 ]; then
     echo 'Error: --verify y --dry-run no pueden combinarse.' >&2
     exit 2

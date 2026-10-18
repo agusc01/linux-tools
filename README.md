@@ -90,3 +90,33 @@ lt-volume status
 Pruebas con servicios simulados: `sh tests/audio-brightness.sh`.
 
 **Comando correcto:** `lt-volume status` (con guion y sin traducir `volume`). Si instalaste una versión anterior, actualizá `main` y ejecutá `sh install.sh --modules audio`. Esta operación conserva las funciones Fish, detecta el sistema de audio y ofrece instalar ALSA mediante `apk` o `apt-get`; no habilita `community` por su cuenta.
+
+## Instalación de doas (módulo de privilegios)
+
+Podés instalar y configurar **doas directamente desde linux-tools**, incluso si todavía no existe Fish:
+
+```sh
+sh install.sh --modules doas --dry-run
+sh install.sh --modules doas
+doas id -u    # debe imprimir 0
+```
+
+En Alpine instala el paquete `doas` del repositorio **main** mediante `apk`, sin habilitar `community`. En Debian/Ubuntu utiliza `apt-get`. El instalador se ejecuta como **usuario común**, muestra la política y, con autorización, usa **`su` para solicitar la contraseña de root** antes de instalar el paquete. No requiere `sudo` ni `doas` previo.
+
+Por seguridad, concede acceso administrativo con contraseña **solo al usuario actual** mediante `permit TU_USUARIO as root`. No utiliza `nopass` ni suma automáticamente a usuarios al grupo wheel (no hay que cerrar sesión por un cambio de grupos). En Alpine genera `/etc/doas.d/90-linux-tools.conf`; en Debian/Ubuntu añade una regla a `/etc/doas.conf` sin borrar reglas existentes, con backup en `/var/backups/linux-tools`. No sobrescribe archivos de configuración propios del usuario ni configura un permiso general para todos los usuarios.
+
+**Alternativa manual**, si ya estás en una sesión root con `su -`:
+
+```sh
+apk add doas
+# Reemplazá NOMBRE por tu usuario normal (no root).
+mkdir -p /etc/doas.d
+printf 'permit NOMBRE as root\n' > /etc/doas.d/90-linux-tools.conf
+chmod 600 /etc/doas.d/90-linux-tools.conf
+exit
+doas id -u
+```
+
+Si no conocés tu usuario, ejecutá `id -un` **antes** de usar `su -`. En la vía manual no sobrescribas un archivo `90-linux-tools.conf` existente sin inspeccionarlo. Recordá que permitir `doas` otorga privilegios de administración completos al usuario configurado.
+
+La desinstalación de este permiso **no es automática**: requiere una acción administrativa deliberada y mantener otra forma de acceso a root (por ejemplo, `su -`).

@@ -3,7 +3,7 @@
 set -eu
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 
-for script in install.sh uninstall.sh lib/common.sh lib/audio-setup.sh tests/check.sh; do sh -n "$root/$script"; done
+for script in install.sh uninstall.sh lib/common.sh lib/audio-setup.sh modules/doas/bootstrap.sh modules/doas/root-setup.sh tests/check.sh; do sh -n "$root/$script"; done
 sh "$root/install.sh" --list | grep -q '^rotate '
 for f in "$root/fish/conf.d/linux-tools.fish" "$root"/fish/functions/*.fish; do
     grep -Fqx '# linux-tools-managed: agusc01/linux-tools' "$f"
@@ -14,6 +14,7 @@ sh "$root/install.sh" --dry-run | grep -q 'r90.fish'
 sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
 sh "$root/install.sh" --modules fish,rotate,audio,brightness --dry-run | grep -q lt-volume
 sh "$root/tests/audio-brightness.sh"
+sh "$root/tests/doas.sh"
 
 # Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.
 tmp_os=$(mktemp)

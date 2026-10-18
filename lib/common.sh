@@ -16,6 +16,7 @@ lt_require_user() {
 lt_parse_modules() {
     requested=$1
     want_fish=0
+    want_doas=0
     want_rotate=0
     want_audio=0
     want_brightness=0
@@ -28,6 +29,7 @@ lt_parse_modules() {
         esac
         case "$part" in
             fish) want_fish=1 ;;
+            doas) want_doas=1 ;;
             rotate) want_rotate=1 ;;
             audio) want_audio=1 ;;
             brightness) want_brightness=1 ;;
@@ -36,5 +38,5 @@ lt_parse_modules() {
     done
 }
 lt_print_modules() {
-    printf '%s\n' 'fish    Obligatorio: configuración mínima de Fish' 'rotate      Rotación X11 de pantalla y táctil' 'audio       Volumen con pulsemixer, wpctl o pactl' 'brightness  Brillo lógico X11 mediante xrandr'
+    printf '%s\n' 'fish    Obligatorio: configuración mínima de Fish' 'rotate      Rotación X11 de pantalla y táctil' 'audio       Volumen con pulsemixer, wpctl o pactl' 'brightness  Brillo lógico X11 mediante xrandr' 'doas        Configuración de privilegios (usa su para bootstrap)'
 }

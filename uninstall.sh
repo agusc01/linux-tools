@@ -17,6 +17,11 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 lt_parse_modules "$modules"
+if [ "$want_doas" -eq 1 ]; then
+    echo 'Doas es una configuración privilegiada: la desinstalación automática no modifica /etc/doas.conf ni /etc/doas.d/.'
+    echo 'Conservá al menos un mecanismo de acceso root antes de revocar esta autorización.'
+    if [ "$modules" = doas ]; then exit 0; fi
+fi
 [ "$dry_run" -eq 1 ] || lt_require_user
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
