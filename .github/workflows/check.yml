@@ -21,8 +21,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Instalar Fish desde main y crear usuario sin privilegios
         run: |
-          apk add --no-cache fish
+          apk add --no-cache fish doas
           adduser -D tester
       - name: Probar scripts y aislamiento en Alpine
         run: |
           su tester -s /bin/sh -c "cd '$GITHUB_WORKSPACE' && sh tests/check.sh"
+      - name: Validar instalación real y repetible de doas (contenedor de CI)
+        run: |
+          sh modules/doas/root-setup.sh --user tester --yes
+          doas -C /etc/doas.d/90-linux-tools.conf
+          grep -Fxq 'permit tester as root' /etc/doas.d/90-linux-tools.conf
+          sh modules/doas/root-setup.sh --user tester --yes
