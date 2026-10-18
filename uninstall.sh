@@ -8,7 +8,7 @@ modules=fish,rotate
 dry_run=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate] [--dry-run]'; exit 0 ;;
+        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness] [--dry-run]'; exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
             modules=$2; shift 2 ;;
@@ -26,6 +26,16 @@ if [ "$want_rotate" -eq 1 ]; then
         plan="$plan
 $config_home/fish/functions/$name.fish"
     done
+fi
+if [ "$want_audio" -eq 1 ]; then
+    plan="$plan
+$HOME/.local/bin/lt-volume
+$config_home/fish/functions/lt_audio.fish"
+fi
+if [ "$want_brightness" -eq 1 ]; then
+    plan="$plan
+$HOME/.local/bin/lt-brightness
+$config_home/fish/functions/lt_brightness.fish"
 fi
 while IFS= read -r target; do
     [ -n "$target" ] || continue

@@ -12,7 +12,7 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate] [--dry-run] [--verify] [--migrate-rotate]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness] [--dry-run] [--verify] [--migrate-rotate]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
@@ -46,6 +46,14 @@ if [ "$want_rotate" -eq 1 ]; then
         add_plan "fish/functions/$name.fish" "$config_home/fish/functions/$name.fish"
     done
 fi
+if [ "$want_audio" -eq 1 ]; then
+    add_plan 'bin/lt-volume' "$HOME/.local/bin/lt-volume"
+    add_plan 'fish/functions/lt_audio.fish' "$config_home/fish/functions/lt_audio.fish"
+fi
+if [ "$want_brightness" -eq 1 ]; then
+    add_plan 'bin/lt-brightness' "$HOME/.local/bin/lt-brightness"
+    add_plan 'fish/functions/lt_brightness.fish' "$config_home/fish/functions/lt_brightness.fish"
+fi
 
 # Verificación de instalación REAL: no ejecuta r90, evita rotar la pantalla.
 # Fish se inicia en un proceso nuevo, con el mismo HOME y XDG_CONFIG_HOME.
@@ -74,6 +82,28 @@ verify_functions() {
         done
     else
         echo 'Rotación: no seleccionada (--modules fish,rotate para incluirla).'
+    fi
+    if [ "$want_audio" -eq 1 ]; then
+        if [ ! -x "$HOME/.local/bin/lt-volume" ] || ! lt_source_owned "$HOME/.local/bin/lt-volume"; then
+            echo 'Error: falta el ejecutable lt-volume.' >&2
+            failed=1
+        elif ! fish -c 'type -q lt_audio'; then
+            echo 'Error: Fish no reconoce lt_audio.' >&2
+            failed=1
+        else
+            echo 'OK: lt_audio y ejecutable lt-volume'
+        fi
+    fi
+    if [ "$want_brightness" -eq 1 ]; then
+        if [ ! -x "$HOME/.local/bin/lt-brightness" ] || ! lt_source_owned "$HOME/.local/bin/lt-brightness"; then
+            echo 'Error: falta el ejecutable lt-brightness.' >&2
+            failed=1
+        elif ! fish -c 'type -q lt_brightness'; then
+            echo 'Error: Fish no reconoce lt_brightness.' >&2
+            failed=1
+        else
+            echo 'OK: lt_brightness y ejecutable lt-brightness'
+        fi
     fi
     if [ "$failed" -ne 0 ]; then
         echo 'Diagnóstico: ejecutá fish -c "printf \"%s\\n\" \$fish_function_path" para ver dónde busca Fish.' >&2
@@ -127,7 +157,9 @@ trap 'if [ -n "$tempfile" ]; then rm -f "$tempfile"; fi' 0
 while IFS='|' read -r relative target; do
     [ -n "$relative" ] || continue
     source_file="$root/$relative"
-    if [ -f "$target" ] && cmp -s "$source_file" "$target"; then
+    mode=644
+    case "$relative" in bin/*) mode=755 ;; esac
+    if [ -f "$target" ] && cmp -s "$source_file" "$target" && { [ "$mode" -ne 755 ] || [ -x "$target" ]; }; then
         echo "Sin cambios: $target"
         continue
     fi
@@ -155,7 +187,7 @@ while IFS='|' read -r relative target; do
     mkdir -p "$(dirname "$target")"
     tempfile=$(mktemp "$(dirname "$target")/.linux-tools.XXXXXXXX")
     cp "$source_file" "$tempfile"
-    chmod 644 "$tempfile"
+    chmod "$mode" "$tempfile"
     mv -f "$tempfile" "$target"
     tempfile=''
     echo "Instalado: $target"
@@ -170,10 +202,14 @@ if [ "$want_rotate" -eq 1 ]; then
         fi
     done
 fi
+selected='fish'
+[ "$want_rotate" -eq 0 ] || selected="$selected, rotate"
+[ "$want_audio" -eq 0 ] || selected="$selected, audio"
+[ "$want_brightness" -eq 0 ] || selected="$selected, brightness"
 if [ "$dry_run" -eq 1 ]; then
-    echo "Módulos simulados: fish$([ "$want_rotate" -eq 1 ] && printf ', rotate')."
+    echo "Módulos simulados: $selected."
     exit 0
 fi
-echo "Módulos instalados: fish$([ "$want_rotate" -eq 1 ] && printf ', rotate')."
+echo "Módulos instalados: $selected."
 verify_functions || exit 1
 echo 'Listo. Las funciones de Fish están disponibles sin reiniciar la sesión.'
