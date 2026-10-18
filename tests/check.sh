@@ -3,7 +3,7 @@
 set -eu
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 
-for script in install.sh uninstall.sh lib/common.sh tests/check.sh; do sh -n "$root/$script"; done
+for script in install.sh uninstall.sh lib/common.sh lib/audio-setup.sh tests/check.sh; do sh -n "$root/$script"; done
 sh "$root/install.sh" --list | grep -q '^rotate '
 for f in "$root/fish/conf.d/linux-tools.fish" "$root"/fish/functions/*.fish; do
     grep -Fqx '# linux-tools-managed: agusc01/linux-tools' "$f"
@@ -14,6 +14,16 @@ sh "$root/install.sh" --dry-run | grep -q 'r90.fish'
 sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
 sh "$root/install.sh" --modules fish,rotate,audio,brightness --dry-run | grep -q lt-volume
 sh "$root/tests/audio-brightness.sh"
+
+# Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.
+tmp_os=$(mktemp)
+trap 'rm -f "$tmp_os"' EXIT
+printf '%s\n' 'ID=alpine' > "$tmp_os"
+LT_OS_RELEASE="$tmp_os" LT_AUDIO_BACKEND=inexistente sh "$root/lib/audio-setup.sh" --dry-run | grep -q 'apk'
+printf '%s\n' 'ID=debian' > "$tmp_os"
+LT_OS_RELEASE="$tmp_os" LT_AUDIO_BACKEND=inexistente sh "$root/lib/audio-setup.sh" --dry-run | grep -q 'apt-get'
+rm -f "$tmp_os"
+trap - EXIT
 
 if [ "$(id -u)" -eq 0 ] || ! command -v fish >/dev/null 2>&1; then
     echo 'Integración omitida (requiere Fish y usuario no root).'
@@ -40,7 +50,21 @@ else
     # Segunda instalación no cambia nada.
     setup_env sh "$root/install.sh" --modules fish,rotate | grep -q 'Sin cambios'
     # Los módulos nuevos se instalan por separado sin borrar los originales.
-    setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness >/dev/null
+    setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --no-deps >/dev/null
+    # La verificación comprueba un dispositivo ALSA utilizable, no solo el archivo.
+    mkdir -p "$tmp/mock"
+    cat > "$tmp/mock/amixer" <<'EOF'
+#!/bin/sh
+if [ "$1" = sget ] && [ "$2" = Master ]; then
+    printf "Simple mixer control 'Master',0\n  Mono: Playback 0 [42%%] [on]\n"
+else
+    exit 1
+fi
+EOF
+    chmod +x "$tmp/mock/amixer"
+    PATH="$tmp/mock:$PATH"
+    LT_AUDIO_BACKEND=alsa
+    export PATH LT_AUDIO_BACKEND
     setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_audio'
     setup_env sh "$root/install.sh" --modules fish,rotate,audio,brightness --verify | grep -q 'OK: lt_brightness'
     test -x "$tmp/home/.local/bin/lt-volume"

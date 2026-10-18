@@ -2,7 +2,7 @@
 
 Herramientas personales y configuración de Fish para Alpine Linux y Debian.
 
-**Entregas:** Fish y rotación táctil integrados en main. Esta nueva rama incorpora audio y brillo X11 independientes de Bash. Todavía faltan Rofi, dbar, Wi-Fi, Bluetooth y dshortcuts.
+**Entregas:** Fish y rotación táctil integrados en main. El módulo de audio incluye preparación de dependencias y fallback ALSA en Alpine. Todavía faltan Rofi, dbar, Wi-Fi, Bluetooth y dshortcuts.
 
 Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. En Alpine 3.24, Fish se encuentra en el repositorio **main**; no requiere community. linux-tools no instala paquetes del sistema ni cambia la shell predeterminada.
 
@@ -72,6 +72,18 @@ lt-brightness set 70 --notify
 
 También están las funciones Fish `lt_audio` y `lt_brightness` con los mismos argumentos. Esto **no reemplaza** todavía las funciones antiguas `s0`, `setsound`, `b0`, etc. La migración de dshortcuts/dwm será posterior.
 
-Audio detecta `pulsemixer`, `wpctl` (PipeWire) o `pactl` (PulseAudio); permite `LT_AUDIO_BACKEND` para elegir. Brillo es atenuación lógica de X11 (requiere `xrandr` y sesión X11), con mínimo de 10% y `LT_DISPLAY_OUTPUT` para elegir monitor. La instalación no agrega paquetes ni toca configuración de audio ni servicios del sistema. Los módulos se pueden desinstalar por separado con `sh uninstall.sh --modules audio,brightness`, que conserva Fish y rotate.
+Audio detecta `pulsemixer`, `wpctl` (PipeWire), `pactl` (PulseAudio) o `amixer` (ALSA); permite `LT_AUDIO_BACKEND` para elegir. Brillo es atenuación lógica de X11 (requiere `xrandr` y sesión X11), con mínimo de 10% y `LT_DISPLAY_OUTPUT` para elegir monitor. Al seleccionar `audio`, el instalador detecta una salida de audio operativa y, si no existe, propone instalar ALSA (`alsa-utils` y, en Alpine/OpenRC, `alsa-utils-openrc`) usando **solo los repositorios habilitados**, sin activar community; con permiso del usuario puede ajustar el grupo `audio` y el servicio ALSA. Usa `doas`, `sudo` o `su` para los cambios privilegiados. `--dry-run` muestra el plan y `--yes` lo confirma sin interacción. `--no-deps` omite deliberadamente este paso (solo para pruebas o preparación manual). No fuerza PulseAudio ni PipeWire si ya existe audio funcional.
+
+**Nota:** instalación de los paquetes no garantiza hardware de audio detectado. Si no hay tarjeta, permisos activos o dispositivo de salida, la instalación avisa y devuelve error. Tras agregar el usuario al grupo `audio`, es necesario cerrar la sesión y volver a entrar.
+
+Para reparar una instalación anterior:
+
+```sh
+git pull --ff-only origin main
+sh install.sh --modules audio --dry-run
+sh install.sh --modules audio
+lt-volume status
+```
+ Los módulos se pueden desinstalar por separado con `sh uninstall.sh --modules audio,brightness`, que conserva Fish y rotate.
 
 Pruebas con servicios simulados: `sh tests/audio-brightness.sh`.

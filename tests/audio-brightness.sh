@@ -82,4 +82,55 @@ LT_DISPLAY_OUTPUT=HDMI-1 sh "$root/bin/lt-brightness" set 75 >/dev/null
 [ "$(cat "$tmp/state/external")" = '0.75' ] || fail 'selección monitor externo'
 [ "$(sh "$root/bin/lt-brightness" get)" = 10 ] || fail 'no modificar otro monitor'
 
-echo 'OK: audio y brillo con dispositivos simulados (sin afectar hardware).'
+
+# Mock ALSA: el entorno mínimo Alpine no dispone necesariamente de PulseAudio.
+cat > "$tmp/mock/amixer" <<'EOF'
+#!/bin/sh
+set -eu
+case "$1" in
+    sget)
+        [ "$2" = Master ] || exit 1
+        printf "Simple mixer control 'Master',0\n"
+        if [ "$(cat "$MOCK_STATE/mute")" = 1 ]; then switch=off; else switch=on; fi
+        v=$(cat "$MOCK_STATE/volume")
+        printf '  Mono: Playback 0 [%s%%] [%s]\n' "$v" "$switch"
+        ;;
+    -q)
+        [ "$2" = sset ] && [ "$3" = Master ] || exit 1
+        case "$4" in
+            mute) echo 1 > "$MOCK_STATE/mute" ;;
+            unmute) echo 0 > "$MOCK_STATE/mute" ;;
+            toggle)
+                if [ "$(cat "$MOCK_STATE/mute")" = 1 ]; then echo 0 > "$MOCK_STATE/mute"
+                else echo 1 > "$MOCK_STATE/mute"; fi
+                ;;
+            *%)
+                v=$(printf '%s' "$4" | tr -d '%')
+                echo "$v" > "$MOCK_STATE/volume"
+                ;;
+            *) exit 2 ;;
+        esac
+        ;;
+    *) exit 2 ;;
+esac
+EOF
+chmod +x "$tmp/mock/amixer"
+export LT_AUDIO_BACKEND=alsa
+printf '%s\n' 50 > "$tmp/state/volume"
+printf '%s\n' 0 > "$tmp/state/mute"
+[ "$(sh "$root/bin/lt-volume" get)" = 50 ] || fail 'ALSA: lectura inicial'
+sh "$root/bin/lt-volume" set 100 >/dev/null
+sh "$root/bin/lt-volume" up >/dev/null
+[ "$(sh "$root/bin/lt-volume" get)" = 100 ] || fail 'ALSA: volumen máximo'
+sh "$root/bin/lt-volume" down >/dev/null
+[ "$(sh "$root/bin/lt-volume" get)" = 90 ] || fail 'ALSA: bajar volumen'
+sh "$root/bin/lt-volume" mute >/dev/null
+sh "$root/bin/lt-volume" status | grep -q '(muted)' || fail 'ALSA: mute'
+sh "$root/bin/lt-volume" toggle >/dev/null
+sh "$root/bin/lt-volume" status | grep -q '(unmuted)' || fail 'ALSA: unmute'
+# Sin PulseAudio ni PipeWire: ALSA se detecta automáticamente.
+unset LT_AUDIO_BACKEND
+mv "$tmp/mock/pulsemixer" "$tmp/mock/pulsemixer.off"
+sh "$root/bin/lt-volume" status | grep -q '90%' || fail 'ALSA: autodetección'
+
+echo 'OK: PulseAudio y ALSA simulados, brillo X11 sin tocar hardware.'
