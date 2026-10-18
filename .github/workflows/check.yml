@@ -1,0 +1,28 @@
+name: Validación
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Fish
+        run: sudo apt-get update && sudo apt-get install -y fish
+      - name: Probar scripts
+        run: sh tests/check.sh
+
+  alpine:
+    runs-on: ubuntu-latest
+    container: alpine:3.24
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Fish desde main y crear usuario sin privilegios
+        run: |
+          apk add --no-cache fish
+          adduser -D tester
+      - name: Probar scripts y aislamiento en Alpine
+        run: |
+          su tester -s /bin/sh -c "cd '$GITHUB_WORKSPACE' && sh tests/check.sh"
