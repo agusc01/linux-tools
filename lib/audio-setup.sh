@@ -3,6 +3,7 @@
 # Prepara audio; solo solicita privilegios para operaciones del sistema.
 set -eu
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
+. "$root/lib/admin-paths.sh"
 dry_run=0
 yes=0
 while [ "$#" -gt 0 ]; do
@@ -33,7 +34,7 @@ fi
 packages=''
 if ! command -v amixer >/dev/null 2>&1; then
     packages='alsa-utils'
-    if [ "$manager" = apk ] && command -v rc-service >/dev/null 2>&1; then
+    if [ "$manager" = apk ] && lt_admin_path rc-service >/dev/null 2>&1; then
         packages="$packages alsa-utils-openrc"
     fi
 fi
@@ -58,7 +59,7 @@ if [ "$manager" = apk ] && grep -q '^audio:' /etc/group 2>/dev/null; then
     esac
 fi
 needs_service=0
-if [ "$manager" = apk ] && command -v rc-service >/dev/null 2>&1; then
+if [ "$manager" = apk ] && lt_admin_path rc-service >/dev/null 2>&1; then
     needs_service=1
 fi
 
@@ -85,15 +86,27 @@ if [ "$yes" -eq 0 ]; then
     case "$answer" in s|S|si|Si|SI|sí|Sí) : ;; *) echo 'Cancelado sin cambiar el sistema.'; exit 2 ;; esac
 fi
 as_root() {
+    [ "$#" -gt 0 ] || return 2
+    # La elevación puede restringir PATH: nunca invocar 'apk' por nombre.
+    # Ej.: Alpine mantiene apk en /sbin/apk, fuera del PATH de doas.
+    binary=$(lt_admin_path "$1") || return 1
+    shift
     if [ "$(id -u)" -eq 0 ]; then
-        "$@"
+        "$binary" "$@"
     elif command -v doas >/dev/null 2>&1; then
-        doas "$@"
+        doas "$binary" "$@"
     elif command -v sudo >/dev/null 2>&1; then
-        sudo "$@"
+        sudo "$binary" "$@"
     elif command -v su >/dev/null 2>&1; then
-        # Solo ejecuta subcomandos con nombres predefinidos.
-        su -c "$*"
+        # Argumentos limitados a opciones, paquetes y usuario validado,
+        # sin interpretar caracteres de shell.
+        for argument in "$binary" "$@"; do
+            case "$argument" in
+                *[!a-zA-Z0-9_./:-]*|'') echo 'Error: argumento administrativo no permitido.' >&2; return 2 ;;
+            esac
+        done
+        # El comando es una ruta absoluta y todos sus argumentos son seguros.
+        su -c "$binary $*"
     else
         echo 'Error: se requiere doas, sudo o su para configurar audio.' >&2
         return 1
@@ -108,7 +121,7 @@ if [ -n "$packages" ]; then
     fi
 fi
 if [ "$needs_group" -eq 1 ]; then
-    if command -v addgroup >/dev/null 2>&1; then
+    if lt_admin_path addgroup >/dev/null 2>&1; then
         as_root addgroup "$username" audio
     else
         echo 'Aviso: falta addgroup; configurá el grupo audio manualmente.' >&2
