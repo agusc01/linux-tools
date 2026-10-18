@@ -44,9 +44,17 @@ esac
 
 needs_group=0
 if [ "$manager" = apk ] && grep -q '^audio:' /etc/group 2>/dev/null; then
+    # Consultar la base de grupos, NO solo grupos activos del proceso.
+    # Evita ejecutar addgroup de nuevo hasta que el usuario cierre sesión.
+    group_line=$(grep '^audio:' /etc/group | head -n 1)
+    members=${group_line##*:}
+    case ",$members," in
+        *,"$username",*) : ;;
+        *) needs_group=1 ;;
+    esac
     case " $(id -nG) " in
         *' audio '*) : ;;
-        *) needs_group=1 ;;
+        *) echo 'Aviso: el grupo audio todavía no está activo en esta sesión.' >&2 ;;
     esac
 fi
 needs_service=0
