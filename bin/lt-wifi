@@ -1,8 +1,11 @@
 #!/bin/sh
 # linux-tools-managed: agusc01/linux-tools
-# NetworkManager (nmcli): nunca maneja claves en argumentos del proceso.
+# Elegir el gestor activo, sin detener servicios ni reescribir credenciales.
 set -eu
-export LC_ALL=C
+# Alpine no incluye /sbin en PATH de usuarios normales. Funciona incluso
+# antes de recargar las nuevas opciones de la sesión Fish.
+PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
+export PATH LC_ALL=C
 usage() {
     echo 'Uso: lt-wifi status|list|connections|on|off|connect SSID|disconnect IFACE' >&2
 }
@@ -14,25 +17,131 @@ case "$action" in
     connect|disconnect) [ "$#" -eq 1 ] && [ -n "$1" ] || { usage; exit 2; } ;;
     *) usage; exit 2 ;;
 esac
-if ! command -v nmcli >/dev/null 2>&1; then
-    echo 'Error: falta nmcli. Instalá el módulo wifi con linux-tools.' >&2
+
+wpa_running() {
+    if command -v pidof >/dev/null 2>&1 && pidof wpa_supplicant >/dev/null 2>&1; then
+        return 0
+    fi
+    if command -v pgrep >/dev/null 2>&1 && pgrep -x wpa_supplicant >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+nm_running() {
+    command -v nmcli >/dev/null 2>&1 &&
+        nmcli -t -f RUNNING general 2>/dev/null | grep -qx running
+}
+wifi_interface() {
+    if [ -n "${LT_WIFI_INTERFACE:-}" ]; then
+        printf '%s\n' "$LT_WIFI_INTERFACE"
+        return
+    fi
+    command -v iw >/dev/null 2>&1 || {
+        echo 'Error: falta iw. Repetí sh install.sh --modules wifi para instalarlo.' >&2
+        return 1
+    }
+    iw dev | awk '$1 == "Interface" { print $2; exit }'
+}
+wpa_control_available() {
+    command -v wpa_cli >/dev/null 2>&1 &&
+        [ "$(wpa_cli -i "$interface" ping 2>/dev/null)" = PONG ]
+}
+need_control() {
+    if ! wpa_control_available; then
+        echo 'Error: wpa_supplicant está activo, pero wpa_cli no encuentra su socket de control.' >&2
+        echo 'No se cambió la conexión. Para administrarla, configurá ctrl_interface en wpa_supplicant y reiniciá el servicio solamente cuando puedas permitir una desconexión.' >&2
+        echo 'lt-wifi status y lt-wifi list siguen disponibles sin ese socket.' >&2
+        return 1
+    fi
+}
+wpa_scan() {
+    file=$(mktemp)
+    error_file=$(mktemp)
+    trap 'rm -f "$file" "$error_file"' EXIT HUP INT TERM
+    if iw dev "$interface" scan > "$file" 2>"$error_file"; then
+        :
+    elif ! grep -Eiq 'permission denied|operation not permitted' "$error_file"; then
+        cat "$error_file" >&2
+        return 1
+    elif command -v doas >/dev/null 2>&1; then
+        doas "$(command -v iw)" dev "$interface" scan > "$file" || {
+            echo 'Error: escaneo Wi-Fi fallido.' >&2
+            return 1
+        }
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo "$(command -v iw)" dev "$interface" scan > "$file" || return 1
+    else
+        echo 'Error: el escaneo requiere privilegios. Ejecutá doas iw dev '"$interface"' scan.' >&2
+        cat "$error_file" >&2
+        return 1
+    fi
+    awk '/^[[:space:]]*SSID:[[:space:]]*/ {
+        sub(/^[[:space:]]*SSID:[[:space:]]*/, "")
+        if (length($0)) print
+    }' "$file" | sort -u
+}
+if nm_running; then
+    case "$action" in
+        status)
+            echo 'Gestor: NetworkManager'
+            nmcli -f WIFI general
+            nmcli -f DEVICE,TYPE,STATE,CONNECTION device status ;;
+        list) nmcli -f IN-USE,SSID,SECURITY,SIGNAL device wifi list --rescan yes ;;
+        connections) nmcli -f NAME,TYPE,DEVICE connection show ;;
+        on|off) nmcli radio wifi "$action" ;;
+        connect) nmcli --ask device wifi connect "$1" ;;
+        disconnect) nmcli device disconnect "$1" ;;
+    esac
+    exit $?
+fi
+if ! wpa_running; then
+    echo 'Error: no se detectó NetworkManager activo ni wpa_supplicant.' >&2
+    echo 'No se iniciaron ni detuvieron servicios automáticamente.' >&2
     exit 1
 fi
-if ! nmcli -t -f RUNNING general 2>/dev/null | grep -qx running; then
-    echo 'Error: NetworkManager no está operativo. No se modificarán servicios de red automáticamente.' >&2
-    echo 'En Alpine revisá el servicio networkmanager y sus conflictos con networking/wpa_supplicant.' >&2
+interface=$(wifi_interface)
+[ -n "$interface" ] || {
+    echo 'Error: no se detectó una interfaz Wi-Fi (iw dev).' >&2
+    exit 1
+}
+if ! command -v iw >/dev/null 2>&1; then
+    echo 'Error: falta iw para consultar el estado Wi-Fi con wpa_supplicant.' >&2
     exit 1
 fi
 case "$action" in
     status)
-        nmcli -f WIFI general
-        nmcli -f DEVICE,TYPE,STATE,CONNECTION device status ;;
+        echo "Gestor: wpa_supplicant | Interfaz: $interface"
+        if wpa_control_available; then
+            wpa_cli -i "$interface" status
+        else
+            echo 'Control wpa_cli: no disponible (falta ctrl_interface o acceso al socket).'
+            iw dev "$interface" link
+        fi
+        if command -v ip >/dev/null 2>&1; then
+            ip -brief addr show dev "$interface" || true
+        fi ;;
     list)
-        nmcli -f IN-USE,SSID,SECURITY,SIGNAL device wifi list --rescan yes ;;
-    connections) nmcli -f NAME,TYPE,DEVICE connection show ;;
-    on|off) nmcli radio wifi "$action" ;;
+        echo "Redes visibles en $interface:"
+        wpa_scan ;;
+    connections)
+        need_control || exit 1
+        wpa_cli -i "$interface" list_networks ;;
     connect)
-        # --ask solicita contraseña a la terminal sin ponerla en historial o ps.
-        nmcli --ask device wifi connect "$1" ;;
-    disconnect) nmcli device disconnect "$1" ;;
+        need_control || exit 1
+        # Solo cambiar a redes YA configuradas; nunca filtrar ni imprimir claves.
+        id=$(wpa_cli -i "$interface" list_networks |
+            awk -F '\t' -v ssid="$1" 'NR > 1 && $2 == ssid {print $1; exit}')
+        case "$id" in
+            ''|*[!0-9]*) echo 'Error: red no guardada. No se almacenarán contraseñas desde argumentos.' >&2; exit 1 ;;
+        esac
+        wpa_cli -i "$interface" select_network "$id"
+        echo 'Revisá DHCP si cambiaste de red: wpa_supplicant no asigna direcciones IP.' ;;
+    disconnect)
+        [ "$1" = "$interface" ] || { echo "Error: interfaz esperada: $interface" >&2; exit 2; }
+        need_control || exit 1
+        wpa_cli -i "$interface" disconnect ;;
+    on|off)
+        echo 'Error: con wpa_supplicant no se modifica el estado del radio desde esta herramienta para evitar desconexiones accidentales.' >&2
+        echo 'NetworkManager sí admite lt-wifi on/off cuando es el gestor activo.' >&2
+        exit 1 ;;
 esac
