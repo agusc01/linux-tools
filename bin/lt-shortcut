@@ -1,0 +1,86 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Dispatcher de teclas dshortcuts: acciones cerradas, sin eval ni Bash.
+set -eu
+usage() {
+    echo 'Uso: lt-shortcut volume|brightness|rotate|wifi|bluetooth|rofi TECLA' >&2
+}
+[ "$#" -eq 2 ] || { usage; exit 2; }
+section=$1
+key=$2
+need() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "Error: falta $1. Instalá el módulo correspondiente de linux-tools." >&2
+        return 1
+    }
+}
+case "$section:$key" in
+    volume:j) need lt-volume; exec lt-volume down --notify ;;
+    volume:k) need lt-volume; exec lt-volume up --notify ;;
+    volume:m) need lt-volume; exec lt-volume toggle --notify ;;
+    volume:u) need lt-volume; exec lt-volume unmute --notify ;;
+    volume:0) level=0 ;;
+    volume:1) level=10 ;;
+    volume:2) level=20 ;;
+    volume:3) level=30 ;;
+    volume:4) level=40 ;;
+    volume:5) level=50 ;;
+    volume:6) level=60 ;;
+    volume:7) level=70 ;;
+    volume:8) level=80 ;;
+    volume:9) level=90 ;;
+    volume:o) level=100 ;;
+    brightness:j) need lt-brightness; exec lt-brightness down --notify ;;
+    brightness:k) need lt-brightness; exec lt-brightness up --notify ;;
+    brightness:1) level=10 ;;
+    brightness:2) level=20 ;;
+    brightness:3) level=30 ;;
+    brightness:4) level=40 ;;
+    brightness:5) level=50 ;;
+    brightness:6) level=60 ;;
+    brightness:7) level=70 ;;
+    brightness:8) level=80 ;;
+    brightness:9) level=90 ;;
+    brightness:o) level=100 ;;
+    rotate:n) rotation=normal ;;
+    rotate:r) rotation=derecha ;;
+    rotate:l) rotation=izquierda ;;
+    rotate:i) rotation=invertida ;;
+    wifi:l) need lt-rofi; exec lt-rofi wifi ;;
+    wifi:c) need lt-wifi; need rofi
+        result=$(lt-wifi connections 2>&1) || {
+            rofi -e "Wi-Fi: no se pudieron consultar redes guardadas.
+$result"
+            exit 1
+        }
+        exec rofi -e "Wi-Fi: redes guardadas
+$result" ;;
+    bluetooth:d) need lt-rofi; exec lt-rofi bluetooth ;;
+    bluetooth:s) need lt-bluetooth; need rofi
+        result=$(lt-bluetooth scan 8 2>&1) || {
+            rofi -e "Bluetooth: escaneo fallido.
+$result"
+            exit 1
+        }
+        exec rofi -e "Bluetooth: escaneo
+$result" ;;
+    rofi:a) need lt-rofi; exec lt-rofi apps ;;
+    rofi:r) need lt-rofi; exec lt-rofi run ;;
+    rofi:w) need lt-rofi; exec lt-rofi windows ;;
+    *) usage; exit 2 ;;
+esac
+case "$section" in
+    volume) need lt-volume; exec lt-volume set "$level" --notify ;;
+    brightness) need lt-brightness; exec lt-brightness set "$level" --notify ;;
+    rotate)
+        need fish
+        # Elección fija, nunca se incorpora texto libre a la shell.
+        case "$rotation" in
+            normal) exec fish -c 'rotar normal' ;;
+            derecha) exec fish -c 'rotar derecha' ;;
+            izquierda) exec fish -c 'rotar izquierda' ;;
+            invertida) exec fish -c 'rotar invertida' ;;
+        esac ;;
+esac
+echo 'Error: combinación desconocida.' >&2
+exit 2
