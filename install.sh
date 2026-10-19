@@ -1,6 +1,10 @@
 #!/bin/sh
 # linux-tools-managed: agusc01/linux-tools
 set -eu
+# El instalador debe verificar dependencias de /sbin incluso antes de que
+# la sesión Fish actual haya recargado linux-tools.fish.
+PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
+export PATH
 root=$(CDPATH= cd "$(dirname "$0")" && pwd)
 . "$root/lib/common.sh"
 

@@ -2,6 +2,9 @@
 # linux-tools-managed: agusc01/linux-tools
 # Instala dependencias explícitas sin sustituir una red Wi-Fi ya conectada.
 set -eu
+# También al ejecutar directamente desde una shell con PATH mínimo de Alpine.
+PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
+export PATH
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 . "$root/lib/admin-paths.sh"
 module=''

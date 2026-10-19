@@ -2,7 +2,10 @@
 # linux-tools-managed: agusc01/linux-tools
 # Elegir el gestor activo, sin detener servicios ni reescribir credenciales.
 set -eu
-export LC_ALL=C
+# Alpine no incluye /sbin en PATH de usuarios normales. Funciona incluso
+# antes de recargar las nuevas opciones de la sesión Fish.
+PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
+export PATH LC_ALL=C
 usage() {
     echo 'Uso: lt-wifi status|list|connections|on|off|connect SSID|disconnect IFACE' >&2
 }
@@ -57,6 +60,9 @@ wpa_scan() {
     trap 'rm -f "$file" "$error_file"' EXIT HUP INT TERM
     if iw dev "$interface" scan > "$file" 2>"$error_file"; then
         :
+    elif ! grep -Eiq 'permission denied|operation not permitted' "$error_file"; then
+        cat "$error_file" >&2
+        return 1
     elif command -v doas >/dev/null 2>&1; then
         doas "$(command -v iw)" dev "$interface" scan > "$file" || {
             echo 'Error: escaneo Wi-Fi fallido.' >&2
