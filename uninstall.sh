@@ -8,7 +8,7 @@ modules=fish,rotate
 dry_run=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi] [--dry-run]'; exit 0 ;;
+        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi,shortcuts] [--dry-run]'; exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
             modules=$2; shift 2 ;;
@@ -57,6 +57,10 @@ if [ "$want_rofi" -eq 1 ]; then
     plan="$plan
 $HOME/.local/bin/lt-rofi
 $config_home/fish/functions/lt_rofi.fish"
+fi
+if [ "$want_shortcuts" -eq 1 ]; then
+    plan="$plan
+$HOME/.local/bin/lt-shortcut"
 fi
 while IFS= read -r target; do
     [ -n "$target" ] || continue
