@@ -219,3 +219,18 @@ Los menús están implementados en **linux-tools**, no se copian los scripts Bas
 En Alpine 3.24, `rofi-x11-wayland` se instala desde `community` temporal de la versión estable; en Debian `rofi` desde apt. No se cambia el gestor Wi-Fi ni se toca la configuración de Bluetooth. Rofi necesita una sesión X11/dwm (o display compatible).
 
 **dshortcuts permanece en su propio repositorio C**. No se instala su configuración original de `items.h` automáticamente: actualmente contiene rutas hacia `~/.bash_scripts/...` y comandos de otro entorno. Esa migración se realizará después de adaptar sus atajos a los comandos actuales de linux-tools.
+
+## Integración con dshortcuts en C
+
+`lt-shortcut` es un dispatcher POSIX sin `eval` ni interpretación libre de claves: `volume` y `brightness` llaman los módulos respectivos, `rotate` reutiliza las funciones Fish, y los accesos a Wi-Fi/Bluetooth son consultas mediante Rofi. El menú de C, su compilación y el atajo `Super+P` son responsabilidad de `linux-setup`, no se copian ni modifican archivos del fork desde linux-tools.
+
+```sh
+sh install.sh --modules shortcuts --dry-run
+sh install.sh --modules shortcuts
+lt-shortcut volume k
+lt-shortcut brightness j
+lt-shortcut rotate r
+lt-shortcut wifi l
+```
+
+**Advertencia:** los atajos que cambian volumen, brillo o rotación actúan inmediatamente; los comandos `wifi` y `bluetooth` solo consultan listas. No hay atajos de apagado/reinicio ni restauración de scripts legados con permisos o rutas incorrectas.

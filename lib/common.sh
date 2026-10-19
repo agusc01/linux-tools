@@ -22,6 +22,7 @@ lt_parse_modules() {
     want_wifi=0
     want_bluetooth=0
     want_rofi=0
+    want_shortcuts=0
     [ -n "$requested" ] || { echo 'Error: --modules requiere lista.' >&2; exit 2; }
     remaining=$requested
     while [ -n "$remaining" ]; do
@@ -37,10 +38,11 @@ lt_parse_modules() {
             wifi) want_wifi=1 ;;
             bluetooth) want_bluetooth=1 ;;
             rofi) want_rofi=1 ;;
+            shortcuts) want_shortcuts=1 ;;
             *) echo "Error: módulo desconocido: $part" >&2; exit 2 ;;
         esac
     done
 }
 lt_print_modules() {
-    printf '%s\n' 'fish    Obligatorio: configuración mínima de Fish' 'rotate      Rotación X11 de pantalla y táctil' 'audio       Volumen con pulsemixer, wpctl o pactl' 'brightness  Brillo lógico X11 mediante xrandr' 'wifi        NetworkManager mediante nmcli (migración explícita)' 'bluetooth   Controlador BlueZ y servicios' 'rofi        Lanzador y menús de dwm (X11)'
+    printf '%s\n' 'fish    Obligatorio: configuración mínima de Fish' 'rotate      Rotación X11 de pantalla y táctil' 'audio       Volumen con pulsemixer, wpctl o pactl' 'brightness  Brillo lógico X11 mediante xrandr' 'wifi        NetworkManager mediante nmcli (migración explícita)' 'bluetooth   Controlador BlueZ y servicios' 'rofi        Lanzador y menús de dwm (X11)' 'shortcuts   Comandos para el menú dshortcuts C'
 }

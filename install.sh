@@ -18,7 +18,7 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi,shortcuts] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
@@ -76,6 +76,9 @@ fi
 if [ "$want_rofi" -eq 1 ]; then
     add_plan 'bin/lt-rofi' "$HOME/.local/bin/lt-rofi"
     add_plan 'fish/functions/lt_rofi.fish' "$config_home/fish/functions/lt_rofi.fish"
+fi
+if [ "$want_shortcuts" -eq 1 ]; then
+    add_plan 'bin/lt-shortcut' "$HOME/.local/bin/lt-shortcut"
 fi
 
 # Verificación de instalación REAL: no ejecuta r90, evita rotar la pantalla.
@@ -180,6 +183,15 @@ verify_functions() {
             echo 'OK: lt-rofi preparado. Abrilo desde dwm (sesión X11).'
         fi
     fi
+    if [ "$want_shortcuts" -eq 1 ]; then
+        if [ ! -x "$HOME/.local/bin/lt-shortcut" ] ||
+           ! lt_source_owned "$HOME/.local/bin/lt-shortcut"; then
+            echo 'Error: falta lt-shortcut o no está administrado por linux-tools.' >&2
+            failed=1
+        else
+            echo 'OK: dispatcher lt-shortcut instalado.'
+        fi
+    fi
     if [ "$failed" -ne 0 ]; then
         echo 'Diagnóstico: ejecutá fish -c "printf \"%s\\n\" \$fish_function_path" para ver dónde busca Fish.' >&2
         return 1
@@ -238,7 +250,7 @@ fi
 if [ "$skip_deps" -eq 0 ]; then
     for connectivity in wifi bluetooth; do
         if { [ "$connectivity" = wifi ] && [ "$want_wifi" -eq 1 ]; } ||
-           { [ "$connectivity" = bluetooth ] && [ "$want_bluetooth" -eq 1 ] || [ "$want_rofi" -eq 1 ]; }; then
+           { [ "$connectivity" = bluetooth ] && [ "$want_bluetooth" -eq 1 ]; }; then
             if [ "$dry_run" -eq 1 ]; then
                 sh "$root/lib/connectivity-setup.sh" --module "$connectivity" --dry-run
             elif [ "$assume_yes" -eq 1 ]; then
@@ -319,6 +331,7 @@ selected='fish'
 [ "$want_wifi" -eq 0 ] || selected="$selected, wifi"
 [ "$want_bluetooth" -eq 0 ] || selected="$selected, bluetooth"
 [ "$want_rofi" -eq 0 ] || selected="$selected, rofi"
+[ "$want_shortcuts" -eq 0 ] || selected="$selected, shortcuts"
 if [ "$dry_run" -eq 1 ]; then
     echo "Módulos simulados: $selected."
     exit 0
@@ -333,6 +346,7 @@ if [ "$skip_deps" -eq 1 ] && { [ "$want_audio" -eq 1 ] || [ "$want_wifi" -eq 1 ]
     if [ "$want_wifi" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-wifi" ] || exit 1; fi
     if [ "$want_bluetooth" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-bluetooth" ] || exit 1; fi
     if [ "$want_rofi" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-rofi" ] || exit 1; fi
+    if [ "$want_shortcuts" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-shortcut" ] || exit 1; fi
 else
     verify_functions || exit 1
 fi

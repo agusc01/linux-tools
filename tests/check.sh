@@ -19,6 +19,7 @@ sh "$root/tests/audio-profiles.sh"
 sh "$root/tests/admin-paths.sh"
 sh "$root/tests/connectivity.sh"
 sh "$root/tests/rofi.sh"
+sh "$root/tests/shortcuts.sh"
 
 # Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.
 tmp_os=$(mktemp)
@@ -93,6 +94,10 @@ EOF
     setup_env sh "$root/install.sh" --modules rofi --no-deps >/dev/null
     test -x "$tmp/home/.local/bin/lt-rofi"
     test -f "$tmp/home/config/fish/functions/lt_rofi.fish"
+    setup_env sh "$root/install.sh" --modules shortcuts --no-deps >/dev/null
+    test -x "$tmp/home/.local/bin/lt-shortcut"
+    setup_env sh "$root/uninstall.sh" --modules shortcuts >/dev/null
+    test ! -e "$tmp/home/.local/bin/lt-shortcut"
     setup_env sh "$root/uninstall.sh" --modules rofi >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-rofi"
     setup_env sh "$root/uninstall.sh" --modules wifi,bluetooth >/dev/null
