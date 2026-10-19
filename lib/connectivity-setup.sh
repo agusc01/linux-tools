@@ -21,6 +21,21 @@ release=${LT_OS_RELEASE:-/etc/os-release}
 [ -r "$release" ] || exit 1
 . "$release"
 repo=''
+# Si ya hay conexión administrada por wpa_supplicant, no instalar
+# NetworkManager ni cambiar el backend: para consultas basta iw (main).
+wifi_wpa_active() {
+    if command -v pidof >/dev/null 2>&1 && pidof wpa_supplicant >/dev/null 2>&1; then
+        return 0
+    fi
+    if command -v pgrep >/dev/null 2>&1 && pgrep -x wpa_supplicant >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+wifi_legacy=0
+if [ "$module" = wifi ] && wifi_wpa_active; then
+    wifi_legacy=1
+fi
 case "$ID" in
     alpine)
         package_manager=apk
@@ -31,20 +46,30 @@ case "$ID" in
             case "$major:$minor" in
                 *[!0-9:]*|:*|*:) echo 'Error: versión Alpine no reconocida.' >&2; exit 1 ;;
             esac
-            repo="https://dl-cdn.alpinelinux.org/alpine/v$major.$minor/community"
-            packages='networkmanager networkmanager-cli networkmanager-wifi networkmanager-openrc wpa_supplicant'
+            if [ "$wifi_legacy" -eq 1 ]; then
+                packages='iw'
+            else
+                repo="https://dl-cdn.alpinelinux.org/alpine/v$major.$minor/community"
+                packages='networkmanager networkmanager-cli networkmanager-wifi networkmanager-openrc wpa_supplicant'
+            fi
         else
             packages='bluez bluez-openrc dbus dbus-openrc'
         fi ;;
     debian|ubuntu)
         package_manager=apt-get
-        if [ "$module" = wifi ]; then packages=network-manager
+        if [ "$module" = wifi ]; then
+            if [ "$wifi_legacy" -eq 1 ]; then packages=iw
+            else packages=network-manager; fi
         else packages='bluez dbus'; fi ;;
     *) echo "Error: distribución no soportada: $ID" >&2; exit 1 ;;
 esac
 if [ "$module" = wifi ]; then
-    echo 'Wi-Fi: se instalará nmcli, pero NO se reemplazará el gestor de red actual.'
-    echo 'Migrar desde wpa_supplicant requiere un paso manual para evitar cortar Internet.'
+    if [ "$wifi_legacy" -eq 1 ]; then
+        echo 'Wi-Fi: wpa_supplicant ya está activo. Solo se necesita iw; no se instala ni activa NetworkManager.'
+    else
+        echo 'Wi-Fi: se instalará nmcli, pero NO se reemplazará el gestor de red actual.'
+        echo 'Migrar desde wpa_supplicant requiere un paso manual para evitar cortar Internet.'
+    fi
 else
     echo 'Bluetooth: se prepararán BlueZ y D-Bus; en Alpine se habilitarán sus servicios OpenRC.'
 fi
@@ -103,15 +128,22 @@ if [ "$module" = bluetooth ]; then
     fi
     echo 'Bluetooth preparado. Si no hay adaptador, comprobá bluetoothctl list y rfkill.'
 else
-    if ! command -v nmcli >/dev/null 2>&1; then
-        echo 'Error: se instalaron paquetes pero no está disponible nmcli.' >&2
-        exit 1
-    fi
-    if nmcli -t -f RUNNING general 2>/dev/null | grep -qx running; then
-        echo 'OK: NetworkManager ya está funcionando.'
+    if [ "$wifi_legacy" -eq 1 ]; then
+        if ! command -v iw >/dev/null 2>&1; then
+            echo 'Error: falta el comando iw después de instalar su paquete.' >&2
+            exit 1
+        fi
+        echo 'OK: Wi-Fi existente conservado; ahora lt-wifi status/list puede utilizar iw.'
     else
-        echo 'AVISO: NetworkManager no está en ejecución. No se modifica la red existente.'
-        echo 'Para migrar sin perder Internet, revisá https://wiki.alpinelinux.org/wiki/NetworkManager .'
-        echo 'Configuración pendiente: iniciar NetworkManager cuando se haya detenido el gestor conflictivo.'
+        if ! command -v nmcli >/dev/null 2>&1; then
+            echo 'Error: se instalaron paquetes pero no está disponible nmcli.' >&2
+            exit 1
+        fi
+        if nmcli -t -f RUNNING general 2>/dev/null | grep -qx running; then
+            echo 'OK: NetworkManager ya está funcionando.'
+        else
+            echo 'AVISO: NetworkManager no está en ejecución. No se modifica la red existente.'
+            echo 'Para migrar sin perder Internet, revisá https://wiki.alpinelinux.org/wiki/NetworkManager .'
+        fi
     fi
 fi

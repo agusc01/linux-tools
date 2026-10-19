@@ -141,13 +141,16 @@ verify_functions() {
     fi
     if [ "$want_wifi" -eq 1 ]; then
         if [ ! -x "$HOME/.local/bin/lt-wifi" ] || ! lt_source_owned "$HOME/.local/bin/lt-wifi" ||
-           ! fish -c 'type -q lt_wifi' || ! command -v nmcli >/dev/null 2>&1; then
-            echo 'Error: falta lt-wifi, función Fish o dependencia nmcli.' >&2
+           ! fish -c 'type -q lt_wifi' ||
+           { ! command -v nmcli >/dev/null 2>&1 && ! command -v iw >/dev/null 2>&1; }; then
+            echo 'Error: falta lt-wifi, función Fish o un backend compatible (nmcli/iw).' >&2
             failed=1
         else
-            echo 'OK: lt-wifi instalado; NetworkManager se comprueba por separado.'
-            if ! nmcli -t -f RUNNING general 2>/dev/null | grep -qx running; then
-                echo 'Aviso: NetworkManager no está activo; no se interrumpió la red existente.' >&2
+            echo 'OK: lt-wifi instalado.'
+            if "$HOME/.local/bin/lt-wifi" status >/dev/null 2>&1; then
+                echo 'OK: lt-wifi reconoce el gestor Wi-Fi activo.'
+            else
+                echo 'Aviso: no se pudo comprobar un gestor Wi-Fi activo; no se cambió la red existente.' >&2
             fi
         fi
     fi

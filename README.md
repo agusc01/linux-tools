@@ -170,3 +170,20 @@ Bluetooth no instala audio inalámbrico en ALSA automáticamente: BlueZ gestiona
 La instalación básica añade automáticamente `/sbin`, `/usr/sbin` y `/usr/local/sbin` **al final** del `PATH` de las sesiones Fish cuando existan. Ahora se pueden ejecutar `wpa_cli`, `rc-service`, `modprobe` y `apk` sin rutas completas, siempre que el ejecutable esté instalado. No cambia `/etc/profile`, no añade rutas de root al principio, no crea aliases ni concede privilegios.
 
 Después de `sh install.sh --modules fish --no-deps`, recargá `source ~/.config/fish/conf.d/linux-tools.fish` en tu terminal actual o abrí otra terminal. Probá `command -v wpa_cli`.
+
+## Wi-Fi sobre wpa_supplicant activo, sin NetworkManager
+
+Si el sistema usa `wpa_supplicant` para `wlan0` y `udhcpc` para DHCP, el instalador detecta el proceso existente y prepara únicamente `iw` desde el repositorio `main`, sin habilitar NetworkManager ni modificar la red conectada:
+
+```sh
+sh install.sh --modules fish,wifi --dry-run
+sh install.sh --modules fish,wifi
+lt-wifi status
+lt-wifi list
+```
+
+`status` obtiene datos de asociación mediante `iw dev wlan0 link` incluso si `wpa_cli -i wlan0 ping` falla con `No such file or directory` (socket de control ausente). `list` realiza un escaneo con `iw` y, si necesita permisos, solicita elevación puntual con `doas` o `sudo`. No detiene el servicio y no lee ni muestra contraseñas.
+
+Para `connect` y `connections` mediante `wpa_supplicant`, se requiere el socket de control habilitado y permiso para el usuario; solo se permiten redes **previamente configuradas**. Si falta, `lt-wifi` da instrucciones sin reiniciar el servicio ni escribir archivos sensibles. En Alpine la guía oficial explica `ctrl_interface=/run/wpa_supplicant` y `ctrl_interface_group=wheel`, que requieren una actualización deliberada del archivo de configuración y un reinicio programado del servicio. **No se cambia ese archivo desde linux-tools** y no se pide la contraseña mediante parámetros de línea de comandos.
+
+Fuentes: [Alpine Wi-Fi](https://wiki.alpinelinux.org/wiki/Wi-Fi).
