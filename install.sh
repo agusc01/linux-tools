@@ -324,7 +324,8 @@ if [ "$dry_run" -eq 1 ]; then
     exit 0
 fi
 echo "Módulos instalados: $selected."
-if [ "$skip_deps" -eq 1 ] && { [ "$want_audio" -eq 1 ] || [ "$want_wifi" -eq 1 ] || [ "$want_bluetooth" -eq 1 ]; }; then
+if [ "$skip_deps" -eq 1 ] && { [ "$want_audio" -eq 1 ] || [ "$want_wifi" -eq 1 ] ||
+    [ "$want_bluetooth" -eq 1 ] || [ "$want_rofi" -eq 1 ]; }; then
     echo 'Aviso: --no-deps omitió deliberadamente la configuración del sistema de audio.'
     echo 'Para completar la instalación: sh install.sh --modules audio'
     # Comprobar que los ejecutables se instalaron sin fingir que hay audio operativo.
