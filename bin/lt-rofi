@@ -1,0 +1,60 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Reemplazo de los menús Bash antiguos. No ejecuta texto arbitrario.
+set -eu
+
+usage() {
+    echo 'Uso: lt-rofi [menu|apps|run|windows|wifi|bluetooth]' >&2
+}
+[ "$#" -le 1 ] || { usage; exit 2; }
+action=${1:-menu}
+case "$action" in menu|apps|run|windows|wifi|bluetooth) : ;; *) usage; exit 2 ;; esac
+
+command -v rofi >/dev/null 2>&1 || {
+    echo 'Error: falta Rofi. Instalalo con: sh install.sh --modules rofi' >&2
+    exit 1
+}
+[ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || {
+    echo 'Error: Rofi requiere una sesión gráfica X11/Wayland (por ejemplo dwm).' >&2
+    exit 1
+}
+
+show_info() {
+    label=$1
+    command=$2
+    command -v "$command" >/dev/null 2>&1 || {
+        rofi -e "Falta $command. Instalá el módulo correspondiente de linux-tools."
+        return 1
+    }
+    if result=$("$command" "${3:-status}" 2>&1); then
+        [ -n "$result" ] || result='Sin dispositivos o redes detectados.'
+        rofi -e "$label
+
+$result"
+    else
+        rofi -e "$label
+
+$result"
+        return 1
+    fi
+}
+
+case "$action" in
+    apps) exec rofi -show drun ;;
+    run) exec rofi -show run ;;
+    windows) exec rofi -show window ;;
+    wifi) show_info 'Wi-Fi · redes visibles (solo consulta)' lt-wifi list ;;
+    bluetooth) show_info 'Bluetooth · dispositivos (solo consulta)' lt-bluetooth devices ;;
+    menu)
+        selected=$(printf '%s\n' 'Aplicaciones' 'Comandos' 'Ventanas' 'Redes Wi-Fi' 'Dispositivos Bluetooth' |
+            rofi -dmenu -p 'linux-tools') || exit 0
+        case "$selected" in
+            Aplicaciones) exec rofi -show drun ;;
+            Comandos) exec rofi -show run ;;
+            Ventanas) exec rofi -show window ;;
+            'Redes Wi-Fi') show_info 'Wi-Fi · redes visibles (solo consulta)' lt-wifi list ;;
+            'Dispositivos Bluetooth') show_info 'Bluetooth · dispositivos (solo consulta)' lt-bluetooth devices ;;
+            '') exit 0 ;;
+            *) echo 'Selección desconocida; no se ejecutó ningún comando.' >&2; exit 2 ;;
+        esac ;;
+esac
