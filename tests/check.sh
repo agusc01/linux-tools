@@ -46,6 +46,8 @@ else
     setup_env sh "$root/install.sh" --verify | grep -q 'OK: Fish reconoce r90'
     setup_env fish -c 'type -q r0; and type -q r90; and type -q r180; and type -q r270; and type -q rotar'
     test -f "$tmp/home/config/fish/conf.d/linux-tools.fish"
+    # Simular PATH del usuario en Alpine sin sbin y comprobar el Fish instalado.
+    setup_env env PATH=/usr/bin:/bin fish -c 'contains -- /sbin $PATH; and contains -- /usr/sbin $PATH'
     grep -Fqx '# Alias antiguos' "$tmp/home/config/fish/config.fish"
     for name in r0 r90 r180 r270 rotar; do
         test -f "$tmp/home/config/fish/functions/$name.fish"

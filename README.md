@@ -164,3 +164,9 @@ Fish expone `lt_wifi` y `lt_bluetooth`. La contraseña de Wi-Fi se introduce int
 **Importante, no perder conectividad:** instalar el cliente `nmcli` **no habilita ni sustituye automáticamente** `wpa_supplicant`, `networking` u otro servicio que ya gestiona Internet. Si NetworkManager no está operativo, `lt-wifi` explica el motivo y la migración queda pendiente. Consultá la [guía de NetworkManager de Alpine](https://wiki.alpinelinux.org/wiki/NetworkManager) antes de parar servicios o migrar conexiones. Tampoco se desinstalan los paquetes ni se apagan servicios al quitar funciones de linux-tools.
 
 Bluetooth no instala audio inalámbrico en ALSA automáticamente: BlueZ gestiona el emparejamiento; el audio Bluetooth requiere configurar un servidor compatible (PipeWire/PulseAudio o bluez-alsa) por separado. El módulo `doas` continúa fuera de linux-tools.
+
+## PATH administrativo de Fish en Alpine
+
+La instalación básica añade automáticamente `/sbin`, `/usr/sbin` y `/usr/local/sbin` **al final** del `PATH` de las sesiones Fish cuando existan. Ahora se pueden ejecutar `wpa_cli`, `rc-service`, `modprobe` y `apk` sin rutas completas, siempre que el ejecutable esté instalado. No cambia `/etc/profile`, no añade rutas de root al principio, no crea aliases ni concede privilegios.
+
+Después de `sh install.sh --modules fish --no-deps`, recargá `source ~/.config/fish/conf.d/linux-tools.fish` en tu terminal actual o abrí otra terminal. Probá `command -v wpa_cli`.
