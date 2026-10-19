@@ -200,3 +200,22 @@ ctrl_interface=/run/wpa_supplicant
 ctrl_interface_group=wheel
 ```
 **Precaución:** cualquier miembro de `wheel` podrá controlar redes a través del socket; asegurate de que ese acceso sea aceptable. Es necesario reiniciar el servicio **manualmente** cuando puedas permitir una desconexión breve. No pegar el archivo de configuración completo en tickets ni en un chat porque puede contener PSK. La opción `update_config=1` es **opcional** y solo es necesaria si posteriormente se quiere guardar cambios de redes con `wpa_cli save_config`; no se activa automáticamente.
+
+## Menús Rofi en dwm (Alpine y Debian)
+
+```sh
+sh install.sh --modules rofi --dry-run
+sh install.sh --modules rofi
+lt-rofi             # menú principal
+lt-rofi apps        # aplicaciones (drun)
+lt-rofi run         # ejecutar comando (run)
+lt-rofi windows     # cambiar de ventana (window)
+lt-rofi wifi        # ver redes disponibles (solo consulta)
+lt-rofi bluetooth   # ver dispositivos BlueZ (solo consulta)
+```
+
+Los menús están implementados en **linux-tools**, no se copian los scripts Bash antiguos. Se instala el ejecutable en `~/.local/bin/lt-rofi` y la función `lt_rofi` en Fish. Desde dwm se puede asociar una tecla a `lt-rofi` usando la ruta que resuelve el PATH de dwm o `/home/USUARIO/.local/bin/lt-rofi`; no se modifica automáticamente el `config.h` del fork.
+
+En Alpine 3.24, `rofi-x11-wayland` se instala desde `community` temporal de la versión estable; en Debian `rofi` desde apt. No se cambia el gestor Wi-Fi ni se toca la configuración de Bluetooth. Rofi necesita una sesión X11/dwm (o display compatible).
+
+**dshortcuts permanece en su propio repositorio C**. No se instala su configuración original de `items.h` automáticamente: actualmente contiene rutas hacia `~/.bash_scripts/...` y comandos de otro entorno. Esa migración se realizará después de adaptar sus atajos a los comandos actuales de linux-tools.

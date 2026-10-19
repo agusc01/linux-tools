@@ -3,7 +3,7 @@
 set -eu
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 
-for script in install.sh uninstall.sh lib/common.sh lib/audio-setup.sh lib/audio-hardware.sh lib/admin-paths.sh lib/connectivity-setup.sh tests/check.sh tests/admin-paths.sh; do sh -n "$root/$script"; done
+for script in install.sh uninstall.sh lib/common.sh lib/audio-setup.sh lib/audio-hardware.sh lib/admin-paths.sh lib/connectivity-setup.sh lib/rofi-setup.sh tests/check.sh tests/admin-paths.sh; do sh -n "$root/$script"; done
 sh "$root/install.sh" --list | grep -q '^rotate '
 for f in "$root/fish/conf.d/linux-tools.fish" "$root"/fish/functions/*.fish; do
     grep -Fqx '# linux-tools-managed: agusc01/linux-tools' "$f"
@@ -18,6 +18,7 @@ sh "$root/tests/cherrytrail-audio.sh"
 sh "$root/tests/audio-profiles.sh"
 sh "$root/tests/admin-paths.sh"
 sh "$root/tests/connectivity.sh"
+sh "$root/tests/rofi.sh"
 
 # Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.
 tmp_os=$(mktemp)
@@ -89,6 +90,11 @@ EOF
     test -x "$tmp/home/.local/bin/lt-bluetooth"
     test -f "$tmp/home/config/fish/functions/lt_wifi.fish"
     test -f "$tmp/home/config/fish/functions/lt_bluetooth.fish"
+    setup_env sh "$root/install.sh" --modules rofi --no-deps >/dev/null
+    test -x "$tmp/home/.local/bin/lt-rofi"
+    test -f "$tmp/home/config/fish/functions/lt_rofi.fish"
+    setup_env sh "$root/uninstall.sh" --modules rofi >/dev/null
+    test ! -e "$tmp/home/.local/bin/lt-rofi"
     setup_env sh "$root/uninstall.sh" --modules wifi,bluetooth >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-wifi"
     test ! -e "$tmp/home/.local/bin/lt-bluetooth"
