@@ -7,13 +7,13 @@ set -eu
 PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
 export PATH LC_ALL=C
 usage() {
-    echo 'Uso: lt-wifi status|list|connections|on|off|connect SSID|disconnect IFACE' >&2
+    echo 'Uso: lt-wifi status|list|doctor|connections|on|off|connect SSID|disconnect IFACE' >&2
 }
 action=${1:-}
 [ "$#" -gt 0 ] || { usage; exit 2; }
 shift
 case "$action" in
-    status|list|connections|on|off) [ "$#" -eq 0 ] || { usage; exit 2; } ;;
+    status|list|doctor|connections|on|off) [ "$#" -eq 0 ] || { usage; exit 2; } ;;
     connect|disconnect) [ "$#" -eq 1 ] && [ -n "$1" ] || { usage; exit 2; } ;;
     *) usage; exit 2 ;;
 esac
@@ -82,10 +82,13 @@ wpa_scan() {
 }
 if nm_running; then
     case "$action" in
-        status)
+        status|doctor)
             echo 'Gestor: NetworkManager'
             nmcli -f WIFI general
-            nmcli -f DEVICE,TYPE,STATE,CONNECTION device status ;;
+            nmcli -f DEVICE,TYPE,STATE,CONNECTION device status
+            if [ "$action" = doctor ]; then
+                echo 'Socket de wpa_supplicant: no necesario; controla NetworkManager.'
+            fi ;;
         list) nmcli -f IN-USE,SSID,SECURITY,SIGNAL device wifi list --rescan yes ;;
         connections) nmcli -f NAME,TYPE,DEVICE connection show ;;
         on|off) nmcli radio wifi "$action" ;;
@@ -118,11 +121,49 @@ case "$action" in
             iw dev "$interface" link
         fi
         if command -v ip >/dev/null 2>&1; then
-            ip -brief addr show dev "$interface" || true
+            # BusyBox ip no reconoce "-brief"; esta forma es compatible.
+            ip addr show dev "$interface" 2>/dev/null || true
         fi ;;
     list)
         echo "Redes visibles en $interface:"
         wpa_scan ;;
+    doctor)
+        echo "Gestor: wpa_supplicant | Interfaz: $interface"
+        if wpa_control_available; then
+            echo 'Socket de control: OK (PONG).'
+            echo 'Se pueden listar y seleccionar redes previamente configuradas.'
+        else
+            echo 'Socket de control: NO disponible para este usuario.'
+            socket_dir=${LT_WIFI_CTRL_DIR:-/run/wpa_supplicant}
+            if [ -S "$socket_dir/$interface" ]; then
+                echo "El socket $socket_dir/$interface existe: comprobá permisos y grupo."
+            else
+                echo "No se encuentra el socket en $socket_dir/$interface."
+            fi
+            config_file=${LT_WIFI_WPA_CONFIG:-/etc/wpa_supplicant/wpa_supplicant.conf}
+            if [ -r "$config_file" ]; then
+                if grep -Eq '^[[:space:]]*ctrl_interface[[:space:]]*=' "$config_file"; then
+                    echo 'Configuración: ctrl_interface ya está declarado.'
+                else
+                    echo 'Configuración: no se encuentra ctrl_interface.'
+                fi
+                if grep -Eq '^[[:space:]]*ctrl_interface_group[[:space:]]*=' "$config_file"; then
+                    echo 'Configuración: ctrl_interface_group declarado.'
+                else
+                    echo 'Configuración: no se encuentra ctrl_interface_group.'
+                fi
+            else
+                echo "Configuración: $config_file no es legible por el usuario actual."
+                echo "Para revisar SIN mostrar contraseñas: doas grep -E '^(ctrl_interface|ctrl_interface_group)=' $config_file"
+            fi
+            echo 'En la configuración de wpa_supplicant, fuera de network={...}, usar:'
+            echo '  ctrl_interface=/run/wpa_supplicant'
+            echo '  ctrl_interface_group=wheel'
+            echo 'El grupo wheel podrá administrar redes: usarlo solo si confiás en sus miembros.'
+            echo 'Hacé backup del archivo sensible antes de editarlo. Nunca lo pegues entero en un chat.'
+            echo 'Los cambios requieren reiniciar wpa_supplicant en un momento oportuno: puede cortar Internet.'
+            echo 'Esta herramienta NO modifica la configuración ni reinicia el servicio.'
+        fi ;;
     connections)
         need_control || exit 1
         wpa_cli -i "$interface" list_networks ;;

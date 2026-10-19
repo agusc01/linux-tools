@@ -53,7 +53,14 @@ fi
 EOF
 cat > "$tmp/mock/ip" <<'EOF'
 #!/bin/sh
-echo 'wlan0 UP 192.168.1.10/24'
+printf 'ip:%s\n' "$*" >> "$MOCK_CONNECT_LOG"
+if [ "$1" = '-brief' ]; then
+    echo 'BusyBox: unknown option -brief' >&2
+    exit 1
+fi
+[ "$*" = 'addr show dev wlan0' ] || exit 2
+echo '3: wlan0: <BROADCAST,UP> mtu 1500'
+echo '    inet 192.168.1.10/24 brd 192.168.1.255 scope global wlan0'
 EOF
 chmod +x "$tmp/mock/"*
 PATH="$tmp/mock:$PATH"
@@ -61,6 +68,7 @@ export PATH
 
 sh "$root/bin/lt-wifi" status | grep -q 'NM'
 sh "$root/bin/lt-wifi" list | grep -q 'NM'
+sh "$root/bin/lt-wifi" doctor | grep -q 'Gestor: NetworkManager'
 sh "$root/bin/lt-wifi" connect 'Red con espacios' >/dev/null
 grep -Fq 'wifi:--ask device wifi connect Red con espacios' "$MOCK_CONNECT_LOG"
 sh "$root/bin/lt-wifi" off >/dev/null
@@ -85,6 +93,15 @@ MOCK_NM_RUNNING=no MOCK_WPA_RUNNING=yes sh "$root/bin/lt-wifi" status > "$tmp/wp
 grep -Fq 'Gestor: wpa_supplicant' "$tmp/wpa-status"
 grep -Fq 'Control wpa_cli: no disponible' "$tmp/wpa-status"
 grep -Fq 'RedActual' "$tmp/wpa-status"
+grep -Fq '192.168.1.10/24' "$tmp/wpa-status"
+grep -Fq 'ip:addr show dev wlan0' "$MOCK_CONNECT_LOG"
+if grep -Fq 'ip:-brief' "$MOCK_CONNECT_LOG"; then
+    echo 'Error: lt-wifi sigue usando -brief con BusyBox ip.' >&2; exit 1
+fi
+MOCK_NM_RUNNING=no MOCK_WPA_RUNNING=yes sh "$root/bin/lt-wifi" doctor > "$tmp/wpa-doctor"
+grep -Fq 'Socket de control: NO disponible' "$tmp/wpa-doctor"
+grep -Fq 'ctrl_interface=/run/wpa_supplicant' "$tmp/wpa-doctor"
+grep -Fq 'Esta herramienta NO modifica' "$tmp/wpa-doctor"
 MOCK_NM_RUNNING=no MOCK_WPA_RUNNING=yes sh "$root/bin/lt-wifi" list > "$tmp/wpa-list"
 grep -Fq 'RedNueva' "$tmp/wpa-list"
 [ "$(grep -c RedNueva "$tmp/wpa-list")" -eq 1 ]

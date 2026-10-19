@@ -187,3 +187,16 @@ lt-wifi list
 Para `connect` y `connections` mediante `wpa_supplicant`, se requiere el socket de control habilitado y permiso para el usuario; solo se permiten redes **previamente configuradas**. Si falta, `lt-wifi` da instrucciones sin reiniciar el servicio ni escribir archivos sensibles. En Alpine la guía oficial explica `ctrl_interface=/run/wpa_supplicant` y `ctrl_interface_group=wheel`, que requieren una actualización deliberada del archivo de configuración y un reinicio programado del servicio. **No se cambia ese archivo desde linux-tools** y no se pide la contraseña mediante parámetros de línea de comandos.
 
 Fuentes: [Alpine Wi-Fi](https://wiki.alpinelinux.org/wiki/Wi-Fi).
+
+### Diagnóstico de Wi-Fi y BusyBox en Alpine
+
+`lt-wifi status` usa `ip addr show dev wlan0`, compatible con BusyBox, en lugar de `ip -brief` (no disponible en la utilidad básica de Alpine). `lt-wifi list` usa `iw` para escanear sin cambiar de red.
+
+Si `wpa_cli -i wlan0 ping` falla con `No such file or directory`, `lt-wifi doctor` comprueba de forma **solo lectura** el estado del control socket e informa qué claves globales faltan. El proceso `wpa_supplicant` no necesita reiniciarse para `status` y `list`.
+
+Para habilitar la administración de redes guardadas, agregá si no existen estas dos directivas **al principio** de `/etc/wpa_supplicant/wpa_supplicant.conf`, fuera de `network={ ... }`, después de hacer una copia de seguridad privada:
+```ini
+ctrl_interface=/run/wpa_supplicant
+ctrl_interface_group=wheel
+```
+**Precaución:** cualquier miembro de `wheel` podrá controlar redes a través del socket; asegurate de que ese acceso sea aceptable. Es necesario reiniciar el servicio **manualmente** cuando puedas permitir una desconexión breve. No pegar el archivo de configuración completo en tickets ni en un chat porque puede contener PSK. La opción `update_config=1` es **opcional** y solo es necesaria si posteriormente se quiere guardar cambios de redes con `wpa_cli save_config`; no se activa automáticamente.
