@@ -73,6 +73,14 @@ $HOME/.local/bin/$name"
         plan="$plan
 $HOME/.local/bin/$name"
     done
+    for name in rofi_power rofi_layout rofi_microphone rofi_camera; do
+        plan="$plan
+$HOME/.local/bin/$name"
+    done
+    for name in askpass brightness camera confirm global internet layout menu microphone power rofi rotation volume; do
+        plan="$plan
+$config_home/linux-tools/rofi/$name.rasi"
+    done
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     plan="$plan
