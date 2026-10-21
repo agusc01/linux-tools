@@ -29,7 +29,7 @@ cat > "$tmp/mock/lt-bluetooth" <<'EOF'
 printf 'bluetooth:%s\n' "$*" >> "$ROFI_TEST_LOG"
 echo 'Device AA:BB:CC:DD:EE:FF'
 EOF
-for script in rofi_internet rofi_volume rofi_brightness; do
+for script in rofi_internet rofi_volume rofi_brightness rofi_layout rofi_microphone rofi_camera rofi_power; do
     cat > "$tmp/mock/$script" <<'EOF'
 #!/bin/sh
 printf 'menu:%s\n' "$(basename "$0")" >> "$ROFI_TEST_LOG"
@@ -53,11 +53,15 @@ grep -Fq 'bluetooth:devices' "$ROFI_TEST_LOG"
 sh "$root/bin/lt-rofi" menu
 grep -Fq 'rofi:-dmenu -no-custom -p linux-tools' "$ROFI_TEST_LOG"
 ROFI_TEST_SELECTION='Redes Wi-Fi' sh "$root/bin/lt-rofi" menu
-for name in rofi_internet rofi_volume rofi_brightness; do
+for name in rofi_internet rofi_volume rofi_brightness rofi_layout rofi_microphone rofi_camera rofi_power; do
     case "$name" in
         rofi_internet) label='Internet (marcadores)' ;;
         rofi_volume) label='Volumen' ;;
         rofi_brightness) label='Brillo' ;;
+        rofi_layout) label='Layouts' ;;
+        rofi_microphone) label='Micrófono' ;;
+        rofi_camera) label='Cámara' ;;
+        rofi_power) label='Energía' ;;
     esac
     ROFI_TEST_SELECTION="$label" sh "$root/bin/lt-rofi" menu
     grep -Fqx "menu:$name" "$ROFI_TEST_LOG"
