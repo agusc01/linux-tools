@@ -14,9 +14,16 @@ while :; do
         echo "$status" >&2
         exit 1
     fi
+    theme="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi/brightness.rasi"
+    if [ -f "$theme" ] && [ ! -L "$theme" ]; then
+        selected=$(printf '%s\n' 'Bajar 10%' 'Subir 10%' \
+        '10%' '20%' '30%' '40%' '50%' '60%' '70%' '80%' '90%' '100%' |
+            rofi -dmenu -no-custom -p 'Brillo' -mesg "$status" -theme "$theme") || exit 0
+    else
     selected=$(printf '%s\n' 'Bajar 10%' 'Subir 10%' \
         '10%' '20%' '30%' '40%' '50%' '60%' '70%' '80%' '90%' '100%' |
         rofi -dmenu -no-custom -p 'Brillo' -mesg "$status") || exit 0
+    fi
     case "$selected" in
         'Bajar 10%') lt-brightness down --notify ;;
         'Subir 10%') lt-brightness up --notify ;;
