@@ -99,6 +99,7 @@ if [ "$want_rofi" -eq 1 ]; then
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     add_plan 'bin/lt-shortcut' "$HOME/.local/bin/lt-shortcut"
+    add_plan 'bin/fsignal' "$HOME/.local/bin/fsignal"
 fi
 if [ "$want_aliases" -eq 1 ]; then
     for name in g ga gaA gau gs gss gct gctm gpull gpullremote gamend; do
@@ -213,8 +214,10 @@ verify_functions() {
     fi
     if [ "$want_shortcuts" -eq 1 ]; then
         if [ ! -x "$HOME/.local/bin/lt-shortcut" ] ||
-           ! lt_source_owned "$HOME/.local/bin/lt-shortcut"; then
-            echo 'Error: falta lt-shortcut o no está administrado por linux-tools.' >&2
+           ! lt_source_owned "$HOME/.local/bin/lt-shortcut" ||
+           [ ! -x "$HOME/.local/bin/fsignal" ] ||
+           ! lt_source_owned "$HOME/.local/bin/fsignal"; then
+            echo 'Error: faltan lt-shortcut/fsignal o no están administrados por linux-tools.' >&2
             failed=1
         else
             echo 'OK: dispatcher lt-shortcut instalado.'
@@ -425,7 +428,7 @@ if [ "$skip_deps" -eq 1 ] && { [ "$want_audio" -eq 1 ] || [ "$want_wifi" -eq 1 ]
     if [ "$want_wifi" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-wifi" ] || exit 1; fi
     if [ "$want_bluetooth" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-bluetooth" ] || exit 1; fi
     if [ "$want_rofi" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-rofi" ] || exit 1; fi
-    if [ "$want_shortcuts" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-shortcut" ] || exit 1; fi
+    if [ "$want_shortcuts" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-shortcut" ] && [ -x "$HOME/.local/bin/fsignal" ] || exit 1; fi
     if [ "$want_aliases" -eq 1 ]; then [ -x "$HOME/.local/bin/gs" ] || exit 1; fi
 else
     verify_functions || exit 1
