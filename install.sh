@@ -210,6 +210,9 @@ verify_functions() {
             failed=1
         else
             echo 'OK: lt-rofi preparado. Los menús volumen/brillo necesitan los motores correspondientes.'
+            if ! command -v xsetroot >/dev/null 2>&1; then
+                echo 'Aviso: rofi_layout requiere xsetroot; reinstalá el módulo rofi sin --no-deps.' >&2
+            fi
         fi
     fi
     if [ "$want_shortcuts" -eq 1 ]; then
@@ -220,7 +223,10 @@ verify_functions() {
             echo 'Error: faltan lt-shortcut/fsignal o no están administrados por linux-tools.' >&2
             failed=1
         else
-            echo 'OK: dispatcher lt-shortcut instalado.'
+            echo 'OK: dispatcher lt-shortcut y fsignal instalados.'
+            if ! command -v xsetroot >/dev/null 2>&1; then
+                echo 'Aviso: xsetroot no está instalado; fsignal requiere preparar el módulo shortcuts.' >&2
+            fi
         fi
     fi
     # Solo verificar nombres: no ejecutar acciones de audio/brillo/Rofi/Git.
@@ -341,6 +347,16 @@ if [ "$skip_deps" -eq 0 ]; then
             fi
         fi
     done
+fi
+# rofi_layout y los atajos de dshortcuts usan señales X11.
+if [ "$skip_deps" -eq 0 ] && { [ "$want_rofi" -eq 1 ] || [ "$want_shortcuts" -eq 1 ]; }; then
+    if [ "$dry_run" -eq 1 ]; then
+        sh "$root/lib/xsetroot-setup.sh" --dry-run
+    elif [ "$assume_yes" -eq 1 ]; then
+        sh "$root/lib/xsetroot-setup.sh" --yes
+    else
+        sh "$root/lib/xsetroot-setup.sh"
+    fi
 fi
 if [ "$want_rofi" -eq 1 ] && [ "$skip_deps" -eq 0 ]; then
     if [ "$dry_run" -eq 1 ]; then
