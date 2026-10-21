@@ -232,6 +232,25 @@ ctrl_interface_group=wheel
 ```
 **Precaución:** cualquier miembro de `wheel` podrá controlar redes a través del socket; asegurate de que ese acceso sea aceptable. Es necesario reiniciar el servicio **manualmente** cuando puedas permitir una desconexión breve. No pegar el archivo de configuración completo en tickets ni en un chat porque puede contener PSK. La opción `update_config=1` es **opcional** y solo es necesaria si posteriormente se quiere guardar cambios de redes con `wpa_cli save_config`; no se activa automáticamente.
 
+## Menús Rofi restaurados desde el repositorio Bash (primera etapa)
+
+`rofi_internet`, `rofi_volume` y `rofi_brightness` son ahora **ejecutables POSIX `sh` independientes** en `~/.local/bin`; Fish los reconoce con autocompletado sin argumentos. `rofi_menu` (menú principal) muestra accesos a los tres, conservando los otros accesos existentes. También pueden invocarse desde un atajo dwm o desde Bash, sin usar `fish -c`.
+
+```sh
+sh install.sh --modules rofi,audio,brightness --dry-run
+sh install.sh --modules rofi,audio,brightness
+rofi_internet
+rofi_volume
+rofi_brightness
+rofi_menu
+```
+
+- **`rofi_internet`** recupera 12 marcadores (DuckDuckGo AI, GitHub, pestaña nueva, DuckDuckGo, Google, Gmail, YouTube, Spotify, Google Drive, traducción EN→ES/ES→EN y WhatsApp Web). Tras seleccionar, permite elegir entre navegación **normal** y **privada**; usa `firefox-esr`, `firefox` o `librewolf`, por ese orden, si están instalados. Firefox/LibreWolf **no se instalan automáticamente**: el instalador Rofi no requiere un navegador específico. Se corrige el error de URL antiguo de Drive. Cancelar cualquiera de los dos diálogos no abre el navegador.
+- **`rofi_volume`** muestra el estado de `lt-volume`, permite subir/bajar 10 %, silenciar, activar sonido o fijar 0–100 % en incrementos de 10 %. Los ajustes rápidos mantienen abierto el menú, el porcentaje final lo cierra. Elegir un porcentaje positivo reactiva audio como el menú original. Reutiliza ALSA/PulseAudio/PipeWire; no depende de `pulsemixer`.
+- **`rofi_brightness`** muestra la salida X11 y su brillo; permite subir/bajar 10 % o fijar 10–100 %. Usa el backend existente `lt-brightness`, que **solo ajusta una salida** (prioriza pantalla interna); no reproduce el ajuste multimonitor del Bash antiguo.
+
+Ninguno de los menús interpreta texto libre como órdenes, evalúa código ni modifica tus fuentes de dwm. Se rechazan selecciones desconocidas y se conserva el menú Rofi del sistema **sin sobrescribir tus temas `.rasi` personales**. La migración de temas RASI originales y los demás menús especializados de Rofi quedará para otro paso. Los menús de volumen y brillo requieren además instalar sus módulos respectivos; un script puede estar instalado aunque su backend no esté todavía configurado.
+
 ## Menús Rofi en dwm (Alpine y Debian)
 
 ```sh
@@ -243,9 +262,12 @@ lt-rofi run         # ejecutar comando (run)
 lt-rofi windows     # cambiar de ventana (window)
 lt-rofi wifi        # ver redes disponibles (solo consulta)
 lt-rofi bluetooth   # ver dispositivos BlueZ (solo consulta)
+rofi_internet       # 12 marcadores web + normal/privado
+rofi_volume         # menú interactivo de audio
+rofi_brightness     # menú interactivo de brillo
 ```
 
-Los menús están implementados en **linux-tools**, no se copian los scripts Bash antiguos. Se instala el ejecutable en `~/.local/bin/lt-rofi` y la función `lt_rofi` en Fish. Desde dwm se puede asociar una tecla a `lt-rofi` usando la ruta que resuelve el PATH de dwm o `/home/USUARIO/.local/bin/lt-rofi`; no se modifica automáticamente el `config.h` del fork.
+Los menús están implementados en **linux-tools** como scripts POSIX seguros, tomando la funcionalidad del Bash anterior como referencia, sin ejecutarlo. Se instala el ejecutable en `~/.local/bin/lt-rofi` y la función `lt_rofi` en Fish. Desde dwm se puede asociar una tecla a `lt-rofi` usando la ruta que resuelve el PATH de dwm o `/home/USUARIO/.local/bin/lt-rofi`; no se modifica automáticamente el `config.h` del fork.
 
 En Alpine 3.24, `rofi-x11-wayland` se instala desde `community` temporal de la versión estable; en Debian `rofi` desde apt. No se cambia el gestor Wi-Fi ni se toca la configuración de Bluetooth. Rofi necesita una sesión X11/dwm (o display compatible).
 
