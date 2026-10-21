@@ -26,11 +26,18 @@ done
     exit 1
 }
 
-selection=$(printf '%s\n' \
+bookmarks=$(printf '%s\n' \
     'IA (DuckDuckGo)' 'GitHub' 'Pestaña nueva' 'DuckDuckGo' \
     'Google' 'Gmail' 'YouTube' 'Spotify' 'Google Drive' \
-    'Traducir EN a ES' 'Traducir ES a EN' 'WhatsApp Web' |
-    rofi -dmenu -no-custom -p 'Internet' -mesg 'Elegí un marcador') || exit 0
+    'Traducir EN a ES' 'Traducir ES a EN' 'WhatsApp Web')
+theme_dir="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi"
+if [ -f "$theme_dir/internet.rasi" ] && [ ! -L "$theme_dir/internet.rasi" ]; then
+    selection=$(printf '%s\n' "$bookmarks" |
+        rofi -dmenu -no-custom -p 'Internet' -mesg 'Elegí un marcador' -theme "$theme_dir/internet.rasi") || exit 0
+else
+    selection=$(printf '%s\n' "$bookmarks" |
+        rofi -dmenu -no-custom -p 'Internet' -mesg 'Elegí un marcador') || exit 0
+fi
 case "$selection" in
     'IA (DuckDuckGo)') url='https://duck.ai/' ;;
     GitHub) url='https://github.com/' ;;
@@ -48,8 +55,13 @@ case "$selection" in
     *) echo 'Selección no permitida; no se abrirá ningún sitio.' >&2; exit 2 ;;
 esac
 
-privacy=$(printf '%s\n' 'Normal' 'Privada' |
-    rofi -dmenu -no-custom -p 'Navegación' -mesg 'Elegí el modo de navegación') || exit 0
+if [ -f "$theme_dir/confirm.rasi" ] && [ ! -L "$theme_dir/confirm.rasi" ]; then
+    privacy=$(printf '%s\n' 'Normal' 'Privada' |
+        rofi -dmenu -no-custom -p 'Navegación' -mesg 'Elegí el modo de navegación' -theme "$theme_dir/confirm.rasi") || exit 0
+else
+    privacy=$(printf '%s\n' 'Normal' 'Privada' |
+        rofi -dmenu -no-custom -p 'Navegación' -mesg 'Elegí el modo de navegación') || exit 0
+fi
 case "$privacy" in
     Normal) "$browser" --new-window "$url" >/dev/null 2>&1 & ;;
     Privada) "$browser" --new-window --private-window "$url" >/dev/null 2>&1 & ;;
