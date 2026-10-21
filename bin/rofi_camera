@@ -5,14 +5,6 @@ set -eu
 [ "$#" -eq 0 ] || { echo 'Uso: rofi_camera (sin argumentos)' >&2; exit 2; }
 command -v rofi >/dev/null 2>&1 || { echo 'Error: falta Rofi.' >&2; exit 1; }
 [ -n "${DISPLAY:-}" ] || { echo 'Error: rofi_camera requiere sesión X11.' >&2; exit 1; }
-modprobe=''
-for file in /sbin/modprobe /usr/sbin/modprobe /bin/modprobe /usr/bin/modprobe; do
-    if [ -x "$file" ]; then modprobe=$file; break; fi
-done
-[ -n "$modprobe" ] || {
-    rofi -e 'Falta modprobe (kmod o BusyBox); no se modifica el hardware.' || :
-    exit 1
-}
 status='no cargado'
 if [ -r /proc/modules ] && grep -Eq '^uvcvideo[[:space:]]' /proc/modules; then
     status='cargado'
@@ -42,6 +34,16 @@ else
             -mesg "La acción afecta el módulo del kernel y puede interrumpir aplicaciones.") || exit 0
 fi
 [ "$confirm" = Confirmar ] || exit 0
+# Comprobar disponibilidad del driver DESPUÉS de confirmar; cancelar
+# nunca necesita permisos ni tocar el sistema.
+modprobe=''
+for file in /sbin/modprobe /usr/sbin/modprobe /bin/modprobe /usr/bin/modprobe; do
+    if [ -x "$file" ]; then modprobe=$file; break; fi
+done
+[ -n "$modprobe" ] || {
+    rofi -e 'Falta modprobe (kmod o BusyBox); no se modifica el hardware.' || :
+    exit 1
+}
 case "$action" in
     enable) set -- "$modprobe" uvcvideo ;;
     disable) set -- "$modprobe" -r uvcvideo ;;
