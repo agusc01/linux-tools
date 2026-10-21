@@ -89,6 +89,13 @@ if [ "$want_rofi" -eq 1 ]; then
     for name in rofi_internet rofi_volume rofi_brightness; do
         add_plan "bin/$name" "$HOME/.local/bin/$name"
     done
+    for name in rofi_power rofi_layout rofi_microphone rofi_camera; do
+        add_plan "bin/$name" "$HOME/.local/bin/$name"
+    done
+    # Themes isolated from ~/.config/rofi and personal legacy ~/.bash_scripts.
+    for name in askpass brightness camera confirm global internet layout menu microphone power rofi rotation volume; do
+        add_plan "rasi/$name.rasi" "$config_home/linux-tools/rofi/$name.rasi"
+    done
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     add_plan 'bin/lt-shortcut' "$HOME/.local/bin/lt-shortcut"
@@ -231,9 +238,18 @@ verify_functions() {
         done
     fi
     if [ "$want_rofi" -eq 1 ]; then
-        for name in rofi_launcher rofi_runner rofi_window rofi_menu rofi_internet rofi_volume rofi_brightness; do
+        for name in rofi_launcher rofi_runner rofi_window rofi_menu rofi_internet rofi_volume rofi_brightness rofi_power rofi_layout rofi_microphone rofi_camera; do
             if [ ! -x "$HOME/.local/bin/$name" ] || ! lt_source_owned "$HOME/.local/bin/$name"; then
                 echo "Error: falta acceso directo de Rofi: $name" >&2
+                failed=1
+            fi
+        done
+    fi
+    if [ "$want_rofi" -eq 1 ]; then
+        for name in askpass brightness camera confirm global internet layout menu microphone power rofi rotation volume; do
+            theme="$config_home/linux-tools/rofi/$name.rasi"
+            if [ ! -f "$theme" ] || ! lt_source_owned "$theme"; then
+                echo "Error: falta tema RASI administrado: $name.rasi" >&2
                 failed=1
             fi
         done

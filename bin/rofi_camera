@@ -1,0 +1,65 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Gestiona únicamente el driver uvcvideo, con confirmación y privilegios puntuales.
+set -eu
+[ "$#" -eq 0 ] || { echo 'Uso: rofi_camera (sin argumentos)' >&2; exit 2; }
+command -v rofi >/dev/null 2>&1 || { echo 'Error: falta Rofi.' >&2; exit 1; }
+[ -n "${DISPLAY:-}" ] || { echo 'Error: rofi_camera requiere sesión X11.' >&2; exit 1; }
+status='no cargado'
+if [ -r /proc/modules ] && grep -Eq '^uvcvideo[[:space:]]' /proc/modules; then
+    status='cargado'
+fi
+theme="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi/camera.rasi"
+if [ -f "$theme" ] && [ ! -L "$theme" ]; then
+    selected=$(printf '%s\n' 'Activar cámara USB (uvcvideo)' 'Desactivar cámara USB (uvcvideo)' |
+        rofi -dmenu -no-custom -p 'Cámara' -mesg "Driver uvcvideo: $status" -theme "$theme") || exit 0
+else
+    selected=$(printf '%s\n' 'Activar cámara USB (uvcvideo)' 'Desactivar cámara USB (uvcvideo)' |
+        rofi -dmenu -no-custom -p 'Cámara' -mesg "Driver uvcvideo: $status") || exit 0
+fi
+case "$selected" in
+    'Activar cámara USB (uvcvideo)') action=enable ;;
+    'Desactivar cámara USB (uvcvideo)') action=disable ;;
+    '') exit 0 ;;
+    *) echo 'Opción de cámara desconocida.' >&2; exit 2 ;;
+esac
+confirm_theme="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi/confirm.rasi"
+if [ -f "$confirm_theme" ] && [ ! -L "$confirm_theme" ]; then
+    confirm=$(printf '%s\n' 'Cancelar' 'Confirmar' |
+        rofi -dmenu -no-custom -selected-row 0 -p 'Confirmar cámara' \
+            -mesg "La acción afecta el módulo del kernel y puede interrumpir aplicaciones." -theme "$confirm_theme") || exit 0
+else
+    confirm=$(printf '%s\n' 'Cancelar' 'Confirmar' |
+        rofi -dmenu -no-custom -selected-row 0 -p 'Confirmar cámara' \
+            -mesg "La acción afecta el módulo del kernel y puede interrumpir aplicaciones.") || exit 0
+fi
+[ "$confirm" = Confirmar ] || exit 0
+# Comprobar disponibilidad del driver DESPUÉS de confirmar; cancelar
+# nunca necesita permisos ni tocar el sistema.
+modprobe=''
+for file in /sbin/modprobe /usr/sbin/modprobe /bin/modprobe /usr/bin/modprobe; do
+    if [ -x "$file" ]; then modprobe=$file; break; fi
+done
+[ -n "$modprobe" ] || {
+    rofi -e 'Falta modprobe (kmod o BusyBox); no se modifica el hardware.' || :
+    exit 1
+}
+case "$action" in
+    enable) set -- "$modprobe" uvcvideo ;;
+    disable) set -- "$modprobe" -r uvcvideo ;;
+esac
+# En el menú gráfico no hay por qué disponer de TTY: usar PolicyKit solo
+# cuando ya está instalado, sin configurar privilegios por cuenta propia.
+if [ "$(id -u)" -eq 0 ]; then
+    exec "$@"
+elif command -v pkexec >/dev/null 2>&1; then
+    exec pkexec "$@"
+elif [ -t 0 ] && command -v doas >/dev/null 2>&1; then
+    exec doas "$@"
+elif [ -t 0 ] && command -v sudo >/dev/null 2>&1; then
+    exec sudo "$@"
+else
+    rofi -e 'Cambiar el driver requiere autorización: pkexec o doas/sudo desde una terminal.' || :
+    echo 'No se cambió el driver: falta autorización gráfica segura.' >&2
+    exit 1
+fi

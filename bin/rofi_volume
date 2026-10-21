@@ -14,9 +14,16 @@ while :; do
         echo "$status" >&2
         exit 1
     fi
+    theme="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi/volume.rasi"
+    if [ -f "$theme" ] && [ ! -L "$theme" ]; then
+        selected=$(printf '%s\n' 'Bajar 10%' 'Subir 10%' 'Silenciar' 'Activar sonido' \
+        '0%' '10%' '20%' '30%' '40%' '50%' '60%' '70%' '80%' '90%' '100%' |
+            rofi -dmenu -no-custom -p 'Volumen' -mesg "$status" -theme "$theme") || exit 0
+    else
     selected=$(printf '%s\n' 'Bajar 10%' 'Subir 10%' 'Silenciar' 'Activar sonido' \
         '0%' '10%' '20%' '30%' '40%' '50%' '60%' '70%' '80%' '90%' '100%' |
         rofi -dmenu -no-custom -p 'Volumen' -mesg "$status") || exit 0
+    fi
     case "$selected" in
         'Bajar 10%') lt-volume down --notify ;;
         'Subir 10%') lt-volume up --notify ;;

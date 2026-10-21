@@ -1,0 +1,41 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Señales verificadas con layouts.h y signals.h del fork agusc01/dwm.
+set -eu
+[ "$#" -eq 0 ] || { echo 'Uso: rofi_layout (sin argumentos)' >&2; exit 2; }
+command -v rofi >/dev/null 2>&1 || { echo 'Error: falta Rofi.' >&2; exit 1; }
+command -v xsetroot >/dev/null 2>&1 || { echo 'Error: falta xsetroot (X11).' >&2; exit 1; }
+[ -n "${DISPLAY:-}" ] || { echo 'Error: rofi_layout necesita una sesión X11.' >&2; exit 1; }
+theme="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi/layout.rasi"
+options=$(printf '%s\n' '[] = | Mosaico' '[M] | Monóculo' '[@] | Espiral' \
+    '[\] | Dwindle' 'H[] | Deck' 'TTT | Pila inferior' '=== | Pila horizontal' \
+    'HHH | Cuadrícula' '### | Filas' '--- | Cuadrícula horizontal' \
+    '::: | Cuadrícula sin huecos' '|M| | Principal centrada' \
+    '>M> | Principal flotante centrada' '><> | Flotante')
+if [ -f "$theme" ] && [ ! -L "$theme" ]; then
+    selected=$(printf '%s\n' "$options" |
+        rofi -dmenu -no-custom -p 'Layout dwm' -theme "$theme") || exit 0
+else
+    selected=$(printf '%s\n' "$options" |
+        rofi -dmenu -no-custom -p 'Layout dwm') || exit 0
+fi
+case "$selected" in
+    '[] = | Mosaico') signal=14 ;;
+    '[M] | Monóculo') signal=1 ;;
+    '[@] | Espiral') signal=2 ;;
+    '[\] | Dwindle') signal=4 ;;
+    'H[] | Deck') signal=3 ;;
+    'TTT | Pila inferior') signal=5 ;;
+    '=== | Pila horizontal') signal=6 ;;
+    'HHH | Cuadrícula') signal=7 ;;
+    '### | Filas') signal=8 ;;
+    '--- | Cuadrícula horizontal') signal=9 ;;
+    '::: | Cuadrícula sin huecos') signal=10 ;;
+    '|M| | Principal centrada') signal=11 ;;
+    '>M> | Principal flotante centrada') signal=12 ;;
+    '><> | Flotante') signal=13 ;;
+    '') exit 0 ;;
+    *) echo 'Layout desconocido; no se envió ninguna señal.' >&2; exit 2 ;;
+esac
+# No se ejecuta texto de Rofi ni se modifica config.h.
+exec xsetroot -name "fsignal:$signal"

@@ -1,0 +1,12 @@
+/* linux-tools-managed: agusc01/linux-tools */
+/* Adaptado de agusc01/bash: imports relativos para fuentes persistentes. */
+* {
+    background:     #031D44;
+    background-alt: #0D47A1;
+    foreground:     #FFFFFF;
+    selected:       #42A5F5;
+    active:         #009900;
+    urgent:         #FF0000;
+    font:       "Ubuntu 18";
+}
+

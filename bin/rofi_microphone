@@ -1,0 +1,44 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Control del micrófono (FUENTE de entrada, no altavoces) con Pulse/PipeWire.
+set -eu
+[ "$#" -eq 0 ] || { echo 'Uso: rofi_microphone (sin argumentos)' >&2; exit 2; }
+command -v rofi >/dev/null 2>&1 || { echo 'Error: falta Rofi.' >&2; exit 1; }
+[ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || {
+    echo 'Error: rofi_microphone requiere una sesión gráfica.' >&2; exit 1;
+}
+backend=''
+if command -v wpctl >/dev/null 2>&1 &&
+   wpctl get-volume @DEFAULT_AUDIO_SOURCE@ >/dev/null 2>&1; then
+    backend=wpctl
+elif command -v pactl >/dev/null 2>&1 &&
+     pactl get-source-mute @DEFAULT_SOURCE@ >/dev/null 2>&1; then
+    backend=pactl
+else
+    rofi -e 'No hay fuente de micrófono accesible con wpctl o pactl.' || :
+    echo 'Error: no hay un backend de entrada PipeWire/PulseAudio operativo.' >&2
+    exit 1
+fi
+if [ "$backend" = wpctl ]; then
+    status=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@)
+else
+    status=$(pactl get-source-mute @DEFAULT_SOURCE@)
+fi
+theme="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi/microphone.rasi"
+if [ -f "$theme" ] && [ ! -L "$theme" ]; then
+    selected=$(printf '%s\n' 'Silenciar micrófono' 'Activar micrófono' |
+        rofi -dmenu -no-custom -p 'Micrófono' -mesg "$status" -theme "$theme") || exit 0
+else
+    selected=$(printf '%s\n' 'Silenciar micrófono' 'Activar micrófono' |
+        rofi -dmenu -no-custom -p 'Micrófono' -mesg "$status") || exit 0
+fi
+case "$selected" in
+    'Silenciar micrófono') muted=1 ;;
+    'Activar micrófono') muted=0 ;;
+    '') exit 0 ;;
+    *) echo 'Opción no válida; no se modificó el micrófono.' >&2; exit 2 ;;
+esac
+case "$backend" in
+    wpctl) exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ "$muted" ;;
+    pactl) exec pactl set-source-mute @DEFAULT_SOURCE@ "$muted" ;;
+esac

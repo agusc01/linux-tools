@@ -2,7 +2,10 @@
 # linux-tools-managed: agusc01/linux-tools
 
 lt_source_owned() {
-    [ -f "$1" ] && grep -Fqx '# linux-tools-managed: agusc01/linux-tools' "$1"
+    [ -f "$1" ] && [ ! -L "$1" ] && {
+        grep -Fqx '# linux-tools-managed: agusc01/linux-tools' "$1" ||
+        grep -Fqx '/* linux-tools-managed: agusc01/linux-tools */' "$1"
+    }
 }
 lt_old_rotate() {
     [ -f "$1" ] && grep -Fqx '# rotate-managed: agusc01/rotate' "$1"
