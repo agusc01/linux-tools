@@ -2,7 +2,7 @@
 
 Herramientas personales y configuración de Fish para Alpine Linux y Debian.
 
-**Disponible en main:** Fish, rotación táctil, controles de volumen y brillo. El audio prepara ALSA automáticamente cuando falta un backend operativo (con permiso previo). Todavía faltan Rofi, dbar, Wi-Fi, Bluetooth y dshortcuts.
+**Disponible:** Fish, rotación táctil, controles de volumen y brillo, utilidades Wi-Fi/Bluetooth, Rofi y dispatcher de dshortcuts. Audio prepara ALSA cuando hace falta (con permiso previo). Dbar y los menús Rofi personalizados antiguos siguen pendientes.
 
 Fish es obligatorio, pero lo instalará más adelante [linux-setup](https://github.com/agusc01/linux-setup) mediante apk/apt. En Alpine 3.24, Fish se encuentra en el repositorio **main**; no requiere community. linux-tools puede instalar paquetes del sistema cuando se selecciona un módulo que los necesita y el usuario lo autoriza. No cambia la shell predeterminada ni requiere ejecutar el instalador completo como root.
 
@@ -35,6 +35,37 @@ sh uninstall.sh --dry-run
 sh uninstall.sh --modules fish,rotate
 sh tests/check.sh
 ```
+
+## Primera migración de nombres cortos desde agusc01/bash
+
+La lógica continúa en **POSIX sh**, accesible tanto desde Bash como Fish, dwm o dshortcuts a través de `~/.local/bin`. Fish sólo contiene las funciones que necesitan modificar el directorio de la consola (`cd`); no se importa ni ejecuta `.bash_aliases`. La migración es **opt-in por módulo**, no sobrescribe comandos personales ni altera `config.fish`.
+
+| Módulo | Nuevos comandos directos | Motor reutilizado |
+| --- | --- | --- |
+| `audio` | `s0`, `s1`, `smute`, `sunmute`, `stogglemute` | `lt-volume` (notifica) |
+| `brightness` | `b0`, `b1` | `lt-brightness` (notifica) |
+| `rofi` | `rofi_launcher`, `rofi_runner`, `rofi_window`, `rofi_menu` | `lt-rofi` |
+| `aliases` | `g`, `ga`, `gaA`, `gau`, `gs`, `gss`, `gct`, `gctm`, `gpull`, `gpullremote`, `gamend` | `git` |
+| `aliases` | `dw`, `dk`, `dc`, `pic`, `cdwm`, `cst`, `cslock`, `cdshortcuts` | funciones Fish `cd` |
+
+Se eligieron **nombres invocables sin parámetros** en las acciones cotidianas y autocompletables por Fish. Los comandos Git que necesitan destino o texto (por ejemplo `ga archivo` y `gctm "Mensaje"`) siguen aceptando los argumentos propios de Git. `--modules aliases` se instala independientemente, sin instalar paquetes ni modificar la configuración de Git.
+
+Ejemplo en una instalación que ya tenga los módulos fundamentales:
+
+```sh
+sh install.sh --modules audio,brightness,rofi,aliases --dry-run
+sh install.sh --modules audio,brightness,rofi,aliases
+sh install.sh --modules audio,brightness,rofi,aliases --verify
+s0
+b1
+rofi_launcher
+gs
+cdwm                 # función Fish: solo cambia de carpeta
+```
+
+Para desinstalar **únicamente archivos administrados**, `sh uninstall.sh --modules aliases` o seleccioná el módulo concreto de audio, brillo o Rofi. El instalador aborta si algún nombre ya existe como archivo ajeno o enlace, antes de escribir archivos. `gs` también es el nombre habitual del ejecutable Ghostscript: instalar nuestro acceso directo lo prioriza en `~/.local/bin` dentro de Fish; seleccioná el módulo sólo si querés ese comportamiento.
+
+**No son migraciones completas de comportamiento:** `rofi_menu` usa el menú simplificado actual de linux-tools, no el antiguo menú de 16 opciones; `rofi_internet` sigue pendiente porque era un menú de marcadores web, **no un menú Wi-Fi**. Los controles de brillo sólo actúan sobre una salida, a diferencia del antiguo `b0`/`b1` multimonitor, y `cdwm` navega a fuentes persistentes pero no ejecuta automáticamente `git pull && nvim` para proteger ediciones locales. Otros alias, RASI, dbar, menús de energía y control del micrófono quedan para entregas posteriores.
 
 ## Rotación
 
@@ -71,7 +102,7 @@ lt-brightness down
 lt-brightness set 70 --notify
 ```
 
-También están las funciones Fish `lt_audio` y `lt_brightness` con los mismos argumentos. Esto **no reemplaza** todavía las funciones antiguas `s0`, `setsound`, `b0`, etc. La migración de dshortcuts/dwm será posterior.
+También están las funciones Fish `lt_audio` y `lt_brightness` con los mismos argumentos. Los comandos cortos `s0`, `s1`, `b0` y `b1` se instalan ahora junto a esos motores. La migración de `setsound` y otras funciones será posterior.
 
 Audio detecta `pulsemixer`, `wpctl` (PipeWire), `pactl` (PulseAudio) o `amixer` (ALSA); permite `LT_AUDIO_BACKEND` para elegir. Brillo es atenuación lógica de X11 (requiere `xrandr` y sesión X11), con mínimo de 10% y `LT_DISPLAY_OUTPUT` para elegir monitor. Al seleccionar `audio`, el instalador detecta una salida de audio operativa y, si no existe, propone instalar ALSA (`alsa-utils` y, en Alpine/OpenRC, `alsa-utils-openrc`) usando **solo los repositorios habilitados**, sin activar community; con permiso del usuario puede ajustar el grupo `audio` y el servicio ALSA. Usa `doas`, `sudo` o `su` para los cambios privilegiados. `--dry-run` muestra el plan y `--yes` lo confirma sin interacción. `--no-deps` omite deliberadamente este paso (solo para pruebas o preparación manual). No fuerza PulseAudio ni PipeWire si ya existe audio funcional.
 

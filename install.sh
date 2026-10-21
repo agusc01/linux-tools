@@ -18,7 +18,7 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         --list) lt_print_modules; exit 0 ;;
         --help|-h)
-            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi,shortcuts] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
+            printf '%s\n' 'Uso: sh install.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi,shortcuts,aliases] [--dry-run] [--verify] [--migrate-rotate] [--no-deps] [--yes]' 'Por defecto se instalan Fish y las cinco funciones de rotación táctil.'
             exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
@@ -60,10 +60,16 @@ if [ "$want_audio" -eq 1 ]; then
     add_plan 'lib/admin-paths.sh' "$HOME/.local/share/linux-tools/lib/admin-paths.sh"
     add_plan 'lib/audio-hardware.sh' "$HOME/.local/share/linux-tools/lib/audio-hardware.sh"
     add_plan 'fish/functions/lt_audio.fish' "$config_home/fish/functions/lt_audio.fish"
+    for name in s0 s1 smute sunmute stogglemute; do
+        add_plan "bin/$name" "$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_brightness" -eq 1 ]; then
     add_plan 'bin/lt-brightness' "$HOME/.local/bin/lt-brightness"
     add_plan 'fish/functions/lt_brightness.fish' "$config_home/fish/functions/lt_brightness.fish"
+    for name in b0 b1; do
+        add_plan "bin/$name" "$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_wifi" -eq 1 ]; then
     add_plan 'bin/lt-wifi' "$HOME/.local/bin/lt-wifi"
@@ -76,9 +82,20 @@ fi
 if [ "$want_rofi" -eq 1 ]; then
     add_plan 'bin/lt-rofi' "$HOME/.local/bin/lt-rofi"
     add_plan 'fish/functions/lt_rofi.fish' "$config_home/fish/functions/lt_rofi.fish"
+    for name in rofi_launcher rofi_runner rofi_window rofi_menu; do
+        add_plan "bin/$name" "$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     add_plan 'bin/lt-shortcut' "$HOME/.local/bin/lt-shortcut"
+fi
+if [ "$want_aliases" -eq 1 ]; then
+    for name in g ga gaA gau gs gss gct gctm gpull gpullremote gamend; do
+        add_plan "bin/$name" "$HOME/.local/bin/$name"
+    done
+    for name in dw dk dc pic cdwm cst cslock cdshortcuts; do
+        add_plan "fish/functions/$name.fish" "$config_home/fish/functions/$name.fish"
+    done
 fi
 
 # Verificación de instalación REAL: no ejecuta r90, evita rotar la pantalla.
@@ -191,6 +208,47 @@ verify_functions() {
         else
             echo 'OK: dispatcher lt-shortcut instalado.'
         fi
+    fi
+    # Solo verificar nombres: no ejecutar acciones de audio/brillo/Rofi/Git.
+    if [ "$want_audio" -eq 1 ]; then
+        for name in s0 s1 smute sunmute stogglemute; do
+            if [ ! -x "$HOME/.local/bin/$name" ] || ! lt_source_owned "$HOME/.local/bin/$name"; then
+                echo "Error: falta acceso directo de audio: $name" >&2
+                failed=1
+            fi
+        done
+    fi
+    if [ "$want_brightness" -eq 1 ]; then
+        for name in b0 b1; do
+            if [ ! -x "$HOME/.local/bin/$name" ] || ! lt_source_owned "$HOME/.local/bin/$name"; then
+                echo "Error: falta acceso directo de brillo: $name" >&2
+                failed=1
+            fi
+        done
+    fi
+    if [ "$want_rofi" -eq 1 ]; then
+        for name in rofi_launcher rofi_runner rofi_window rofi_menu; do
+            if [ ! -x "$HOME/.local/bin/$name" ] || ! lt_source_owned "$HOME/.local/bin/$name"; then
+                echo "Error: falta acceso directo de Rofi: $name" >&2
+                failed=1
+            fi
+        done
+    fi
+    if [ "$want_aliases" -eq 1 ]; then
+        for name in g ga gaA gau gs gss gct gctm gpull gpullremote gamend; do
+            if [ ! -x "$HOME/.local/bin/$name" ] || ! lt_source_owned "$HOME/.local/bin/$name"; then
+                echo "Error: falta alias ejecutable de Git: $name" >&2
+                failed=1
+            fi
+        done
+        for name in dw dk dc pic cdwm cst cslock cdshortcuts; do
+            target="$config_home/fish/functions/$name.fish"
+            if [ ! -f "$target" ] || ! lt_source_owned "$target" ||
+               ! fish -c "functions -q -- $name"; then
+                echo "Error: falta función Fish: $name" >&2
+                failed=1
+            fi
+        done
     fi
     if [ "$failed" -ne 0 ]; then
         echo 'Diagnóstico: ejecutá fish -c "printf \"%s\\n\" \$fish_function_path" para ver dónde busca Fish.' >&2
@@ -332,6 +390,7 @@ selected='fish'
 [ "$want_bluetooth" -eq 0 ] || selected="$selected, bluetooth"
 [ "$want_rofi" -eq 0 ] || selected="$selected, rofi"
 [ "$want_shortcuts" -eq 0 ] || selected="$selected, shortcuts"
+[ "$want_aliases" -eq 0 ] || selected="$selected, aliases"
 if [ "$dry_run" -eq 1 ]; then
     echo "Módulos simulados: $selected."
     exit 0
@@ -347,6 +406,7 @@ if [ "$skip_deps" -eq 1 ] && { [ "$want_audio" -eq 1 ] || [ "$want_wifi" -eq 1 ]
     if [ "$want_bluetooth" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-bluetooth" ] || exit 1; fi
     if [ "$want_rofi" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-rofi" ] || exit 1; fi
     if [ "$want_shortcuts" -eq 1 ]; then [ -x "$HOME/.local/bin/lt-shortcut" ] || exit 1; fi
+    if [ "$want_aliases" -eq 1 ]; then [ -x "$HOME/.local/bin/gs" ] || exit 1; fi
 else
     verify_functions || exit 1
 fi

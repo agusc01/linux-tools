@@ -1,0 +1,4 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Alias Git portable sin depender de la shell interactiva.
+exec git status "$@"

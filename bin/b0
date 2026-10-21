@@ -1,0 +1,5 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Acceso directo portable, autocompletable en Fish.
+[ "$#" -eq 0 ] || { echo 'Uso: b0 (sin argumentos)' >&2; exit 2; }
+exec lt-brightness down --notify

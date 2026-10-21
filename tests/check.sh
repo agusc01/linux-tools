@@ -13,6 +13,7 @@ done
 sh "$root/install.sh" --dry-run | grep -q 'r90.fish'
 sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
 sh "$root/install.sh" --modules fish,rotate,audio,brightness --dry-run | grep -q lt-volume
+sh "$root/install.sh" --modules aliases --dry-run | grep -q 'gaA'
 sh "$root/tests/audio-brightness.sh"
 sh "$root/tests/cherrytrail-audio.sh"
 sh "$root/tests/audio-profiles.sh"
@@ -20,6 +21,7 @@ sh "$root/tests/admin-paths.sh"
 sh "$root/tests/connectivity.sh"
 sh "$root/tests/rofi.sh"
 sh "$root/tests/shortcuts.sh"
+sh "$root/tests/friendly-commands.sh"
 
 # Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.
 tmp_os=$(mktemp)
@@ -86,6 +88,8 @@ EOF
         grep -q 'alsactl store'
     test -x "$tmp/home/.local/bin/lt-volume"
     test -x "$tmp/home/.local/bin/lt-brightness"
+    test -x "$tmp/home/.local/bin/s0"
+    test -x "$tmp/home/.local/bin/b1"
     setup_env sh "$root/install.sh" --modules wifi,bluetooth --no-deps >/dev/null
     test -x "$tmp/home/.local/bin/lt-wifi"
     test -x "$tmp/home/.local/bin/lt-bluetooth"
@@ -94,12 +98,23 @@ EOF
     setup_env sh "$root/install.sh" --modules rofi --no-deps >/dev/null
     test -x "$tmp/home/.local/bin/lt-rofi"
     test -f "$tmp/home/config/fish/functions/lt_rofi.fish"
+    test -x "$tmp/home/.local/bin/rofi_launcher"
+    test -x "$tmp/home/.local/bin/rofi_menu"
+    setup_env sh "$root/install.sh" --modules aliases --no-deps >/dev/null
+    setup_env sh "$root/install.sh" --modules aliases --verify | grep -Fq 'Verificación correcta.'
+    setup_env fish -c 'command -sq g; and command -sq gs; and functions -q dw; and functions -q cdwm'
+    test -x "$tmp/home/.local/bin/gaA"
+    test -f "$tmp/home/config/fish/functions/cdshortcuts.fish"
     setup_env sh "$root/install.sh" --modules shortcuts --no-deps >/dev/null
     test -x "$tmp/home/.local/bin/lt-shortcut"
+    setup_env sh "$root/uninstall.sh" --modules aliases >/dev/null
+    test ! -e "$tmp/home/.local/bin/gs"
+    test ! -e "$tmp/home/config/fish/functions/cdwm.fish"
     setup_env sh "$root/uninstall.sh" --modules shortcuts >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-shortcut"
     setup_env sh "$root/uninstall.sh" --modules rofi >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-rofi"
+    test ! -e "$tmp/home/.local/bin/rofi_launcher"
     setup_env sh "$root/uninstall.sh" --modules wifi,bluetooth >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-wifi"
     test ! -e "$tmp/home/.local/bin/lt-bluetooth"
@@ -112,10 +127,21 @@ EOF
     test ! -e "$tmp/home/.local/share/linux-tools/lib/audio-hardware.sh"
     test ! -e "$tmp/home/.local/bin/lt-volume"
     test ! -e "$tmp/home/.local/bin/lt-brightness"
+    test ! -e "$tmp/home/.local/bin/s0"
+    test ! -e "$tmp/home/.local/bin/b0"
     setup_env sh "$root/uninstall.sh" --modules fish,rotate >/dev/null
     test ! -e "$tmp/home/config/fish/conf.d/linux-tools.fish"
     test ! -e "$tmp/home/config/fish/functions/rotar.fish"
     grep -Fqx '# Alias antiguos' "$tmp/home/config/fish/config.fish"
+
+    # Conflictos de alias: preservar un ejecutable personal y no instalar nada.
+    printf '%s\n' '# Alias Git ajeno' > "$tmp/home/.local/bin/gs"
+    if setup_env sh "$root/install.sh" --modules aliases --no-deps >/dev/null 2>&1; then
+        echo 'FALLO: se sobrescribió gs ajeno.' >&2; exit 1
+    fi
+    grep -Fqx '# Alias Git ajeno' "$tmp/home/.local/bin/gs"
+    test ! -e "$tmp/home/.local/bin/ga"
+    rm "$tmp/home/.local/bin/gs"
 
     # Si conf.d/linux-tools.fish ya existía, abortar sin instalar ninguna función.
     mkdir -p "$tmp/home/config/fish/conf.d"
