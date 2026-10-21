@@ -39,24 +39,41 @@ $result"
     fi
 }
 
+theme_dir="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi"
+theme="$theme_dir/rofi.rasi"
+rofi_show() {
+    if [ -f "$theme" ] && [ ! -L "$theme" ]; then
+        exec rofi -show "$1" -theme "$theme"
+    fi
+    exec rofi -show "$1"
+}
 case "$action" in
-    apps) exec rofi -show drun ;;
-    run) exec rofi -show run ;;
-    windows) exec rofi -show window ;;
+    apps) rofi_show drun ;;
+    run) rofi_show run ;;
+    windows) rofi_show window ;;
     wifi) show_info 'Wi-Fi · redes visibles (solo consulta)' lt-wifi list ;;
     bluetooth) show_info 'Bluetooth · dispositivos (solo consulta)' lt-bluetooth devices ;;
     menu)
-        selected=$(printf '%s\n' 'Aplicaciones' 'Comandos' 'Ventanas' 'Internet (marcadores)' 'Volumen' 'Brillo' 'Redes Wi-Fi' 'Dispositivos Bluetooth' |
-            rofi -dmenu -no-custom -p 'linux-tools') || exit 0
+        if [ -f "$theme_dir/menu.rasi" ] && [ ! -L "$theme_dir/menu.rasi" ]; then
+            selected=$(printf '%s\n' 'Aplicaciones' 'Comandos' 'Ventanas' 'Internet (marcadores)' 'Volumen' 'Brillo' 'Layouts' 'Micrófono' 'Cámara' 'Energía' 'Redes Wi-Fi' 'Dispositivos Bluetooth' |
+                rofi -dmenu -no-custom -p 'linux-tools' -theme "$theme_dir/menu.rasi") || exit 0
+        else
+            selected=$(printf '%s\n' 'Aplicaciones' 'Comandos' 'Ventanas' 'Internet (marcadores)' 'Volumen' 'Brillo' 'Layouts' 'Micrófono' 'Cámara' 'Energía' 'Redes Wi-Fi' 'Dispositivos Bluetooth' |
+                rofi -dmenu -no-custom -p 'linux-tools') || exit 0
+        fi
         case "$selected" in
-            Aplicaciones) exec rofi -show drun ;;
-            Comandos) exec rofi -show run ;;
-            Ventanas) exec rofi -show window ;;
-            'Internet (marcadores)'|'Volumen'|'Brillo')
+            Aplicaciones) rofi_show drun ;;
+            Comandos) rofi_show run ;;
+            Ventanas) rofi_show window ;;
+            'Internet (marcadores)'|'Volumen'|'Brillo'|'Layouts'|'Micrófono'|'Cámara'|'Energía')
                 case "$selected" in
                     'Internet (marcadores)') script=rofi_internet ;;
                     Volumen) script=rofi_volume ;;
                     Brillo) script=rofi_brightness ;;
+                    Layouts) script=rofi_layout ;;
+                    Micrófono) script=rofi_microphone ;;
+                    Cámara) script=rofi_camera ;;
+                    Energía) script=rofi_power ;;
                 esac
                 command -v "$script" >/dev/null 2>&1 || {
                     rofi -e "Falta $script. Actualizá e instalá el módulo Rofi." || :
