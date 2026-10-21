@@ -135,7 +135,7 @@ EOF
     grep -Fqx '# Alias antiguos' "$tmp/home/config/fish/config.fish"
 
     # Conflictos de alias: preservar un ejecutable personal y no instalar nada.
-    printf '%s\\n' '# Alias Git ajeno' > "$tmp/home/.local/bin/gs"
+    printf '%s\n' '# Alias Git ajeno' > "$tmp/home/.local/bin/gs"
     if setup_env sh "$root/install.sh" --modules aliases --no-deps >/dev/null 2>&1; then
         echo 'FALLO: se sobrescribió gs ajeno.' >&2; exit 1
     fi
