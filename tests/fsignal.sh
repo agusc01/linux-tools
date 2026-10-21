@@ -27,7 +27,7 @@ for bad in 0 15 29 33 50 57 69 77 99 ';touch /tmp/bad' '14;exit'; do
 done
 if sh "$root/bin/fsignal" >/dev/null 2>&1 ||
    sh "$root/bin/fsignal" 14 30 >/dev/null 2>&1 ||
-   env -u DISPLAY sh "$root/bin/fsignal" 14 >/dev/null 2>&1; then
+   (unset DISPLAY; sh "$root/bin/fsignal" 14) >/dev/null 2>&1; then
     echo 'FALLO: no se verificó aridad o sesión X11.' >&2; exit 1
 fi
 cmp "$tmp/previous" "$FSIGNAL_TEST_LOG"
