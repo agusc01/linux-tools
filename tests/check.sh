@@ -21,6 +21,7 @@ sh "$root/tests/admin-paths.sh"
 sh "$root/tests/connectivity.sh"
 sh "$root/tests/rofi.sh"
 sh "$root/tests/rofi-menus.sh"
+sh "$root/tests/rofi-system.sh"
 sh "$root/tests/shortcuts.sh"
 sh "$root/tests/friendly-commands.sh"
 
@@ -104,6 +105,12 @@ EOF
     for menu in rofi_internet rofi_volume rofi_brightness; do
         test -x "$tmp/home/.local/bin/$menu"
     done
+    for menu in rofi_power rofi_layout rofi_microphone rofi_camera; do
+        test -x "$tmp/home/.local/bin/$menu"
+    done
+    for theme in askpass brightness camera confirm global internet layout menu microphone power rofi rotation volume; do
+        test -f "$tmp/home/config/linux-tools/rofi/$theme.rasi"
+    done
     setup_env sh "$root/install.sh" --modules aliases --no-deps >/dev/null
     setup_env sh "$root/install.sh" --modules aliases --verify | grep -Fq 'Verificación correcta.'
     setup_env fish -c 'command -sq g; and command -sq gs; and functions -q dw; and functions -q cdwm'
@@ -121,6 +128,12 @@ EOF
     test ! -e "$tmp/home/.local/bin/rofi_launcher"
     for menu in rofi_internet rofi_volume rofi_brightness; do
         test ! -e "$tmp/home/.local/bin/$menu"
+    done
+    for menu in rofi_power rofi_layout rofi_microphone rofi_camera; do
+        test ! -e "$tmp/home/.local/bin/$menu"
+    done
+    for theme in askpass brightness camera confirm global internet layout menu microphone power rofi rotation volume; do
+        test ! -e "$tmp/home/config/linux-tools/rofi/$theme.rasi"
     done
     setup_env sh "$root/uninstall.sh" --modules wifi,bluetooth >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-wifi"
