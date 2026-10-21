@@ -1,0 +1,24 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Puente de señales fijadas del fork agusc01/dwm; sin eval ni argumentos libres.
+set -eu
+usage() {
+    echo 'Uso: fsignal N (señal conocida de dwm: layout/bordes/gaps/toggles)' >&2
+}
+[ "$#" -eq 1 ] || { usage; exit 2; }
+case "$1" in
+    1|2|3|4|5|6|7|8|9|10|11|12|13|14|\
+    30|31|32|\
+    40|41|42|43|44|45|46|47|48|49|51|52|53|54|55|56|\
+    70|71|72|73|74|75|76) ;;
+    *) echo "Error: señal no definida en agusc01/dwm: $1" >&2; usage; exit 2 ;;
+esac
+[ -n "${DISPLAY:-}" ] || {
+    echo 'Error: fsignal necesita una sesión X11/dwm.' >&2
+    exit 1
+}
+command -v xsetroot >/dev/null 2>&1 || {
+    echo 'Error: falta xsetroot (xorg-xsetroot o x11-xserver-utils).' >&2
+    exit 1
+}
+exec xsetroot -name "fsignal:$1"
