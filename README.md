@@ -251,6 +251,42 @@ rofi_menu
 
 Ninguno de los menús interpreta texto libre como órdenes, evalúa código ni modifica tus fuentes de dwm. Se rechazan selecciones desconocidas y se conserva el menú Rofi del sistema **sin sobrescribir tus temas `.rasi` personales**. La migración de temas RASI originales y los demás menús especializados de Rofi quedará para otro paso. Los menús de volumen y brillo requieren además instalar sus módulos respectivos; un script puede estar instalado aunque su backend no esté todavía configurado.
 
+## Apariencia RASI original y nuevos menús del sistema
+
+El módulo `rofi` instala, en un directorio **aislado**, los 13 temas `.rasi` del repositorio [agusc01/bash](https://github.com/agusc01/bash/tree/main/.bash_scripts/rasi), adaptando sus imports de `global.rasi` a rutas relativas:
+
+```text
+~/.config/linux-tools/rofi/
+  askpass.rasi       brightness.rasi    camera.rasi
+  confirm.rasi       global.rasi        internet.rasi
+  layout.rasi        menu.rasi          microphone.rasi
+  power.rasi         rofi.rasi          rotation.rasi
+  volume.rasi
+```
+
+No se sobrescribe `~/.config/rofi/`, `~/.bash_scripts/rasi/` ni ningún archivo no administrado. Se conserva la paleta original azul y la geometría de Rofi. Si falta la familia tipográfica `Ubuntu` o los iconos originales, el sistema puede utilizar una fuente alternativa. Los menús usan automáticamente estos temas cuando están instalados; los nuevos también funcionan sin ellos.
+
+```sh
+sh install.sh --modules rofi --dry-run
+sh install.sh --modules rofi
+sh install.sh --modules rofi --verify
+rofi_layout
+rofi_microphone
+rofi_camera
+rofi_power
+```
+
+| Comando | Función y condiciones |
+| --- | --- |
+| `rofi_layout` | Selector de **14 layouts** mediante `xsetroot -name fsignal:N`. Mapeado contra `layouts.h`/`signals.h` de `agusc01/dwm`, no interpreta texto libre ni modifica el fork. Requiere estar en X11/dwm con su parche de señales. |
+| `rofi_microphone` | Silenciar/reactivar **micrófono** (no altavoces). Backend `wpctl` o `pactl`, si hay un servidor de audio operativo; para ALSA puro la función avisa de que no hay un backend compatible de entrada. |
+| `rofi_camera` | Estado de `uvcvideo`, cargar/descargar **ese módulo del kernel** tras doble confirmación. Requiere autorización de root mediante `pkexec` o `doas/sudo` desde una TTY. No administra otras cámaras ni desactiva físicamente todos los dispositivos de vídeo. |
+| `rofi_power` | Bloquear con `slock`, suspender con `loginctl` tras bloquear, reiniciar/apagar con `loginctl` o privilegios explícitos. **Cancelar** es la opción predeterminada en confirmaciones de energía. No instala ni activa gestores de sesión, PolicyKit o servicios de energía. |
+
+**Salir de dwm** se muestra como pendiente: el fork no tiene todavía una señal `quit` segura y no se utiliza `pkill` como sustituto. En Alpine/OpenRC, las operaciones `loginctl` necesitan `elogind` funcionando; si no existe, se comunica la limitación. El bloqueo `slock` puede necesitar un binario setuid instalado correctamente y una contraseña local conocida. Los cambios en micrófono, driver de cámara, suspensión y energía requieren revisión **en el hardware real**: las pruebas de GitHub Actions solo usan dobles de prueba y no ejercitan dispositivos físicos.
+
+Por seguridad, los scripts **no ejecutan selecciones arbitrarias** de Rofi ni utilizan `eval`. `rofi_menu` ahora permite acceder a los menús nuevos, además de marcadores, brillo y volumen. Se prueba el flujo de cancelar sin cambios y la correspondencia de señales de dwm.
+
 ## Menús Rofi en dwm (Alpine y Debian)
 
 ```sh
@@ -265,6 +301,10 @@ lt-rofi bluetooth   # ver dispositivos BlueZ (solo consulta)
 rofi_internet       # 12 marcadores web + normal/privado
 rofi_volume         # menú interactivo de audio
 rofi_brightness     # menú interactivo de brillo
+rofi_layout         # 14 layouts del fork dwm
+rofi_microphone     # micrófono: mute/unmute
+rofi_camera         # cámara USB uvcvideo con confirmación
+rofi_power          # bloqueo, suspensión y energía con confirmación
 ```
 
 Los menús están implementados en **linux-tools** como scripts POSIX seguros, tomando la funcionalidad del Bash anterior como referencia, sin ejecutarlo. Se instala el ejecutable en `~/.local/bin/lt-rofi` y la función `lt_rofi` en Fish. Desde dwm se puede asociar una tecla a `lt-rofi` usando la ruta que resuelve el PATH de dwm o `/home/USUARIO/.local/bin/lt-rofi`; no se modifica automáticamente el `config.h` del fork.
