@@ -313,6 +313,23 @@ En Alpine 3.24, `rofi-x11-wayland` se instala desde `community` temporal de la v
 
 **dshortcuts permanece en su propio repositorio C**. No se instala su configuración original de `items.h` automáticamente: actualmente contiene rutas hacia `~/.bash_scripts/...` y comandos de otro entorno. Esa migración se realizará después de adaptar sus atajos a los comandos actuales de linux-tools.
 
+## Controles originales de dwm desde dshortcuts
+
+El módulo `shortcuts` incorpora `fsignal` como **ejecutable POSIX sh** independiente del intérprete interactivo. Acepta únicamente los números de señal declarados en `signals.h` de `agusc01/dwm` y envía `xsetroot -name "fsignal:N"`; rechaza entradas arbitrarias. Al instalar `rofi` o `shortcuts`, si falta `xsetroot`, el instalador propone preparar su paquete desde el repositorio `community` temporal de Alpine (o `x11-xserver-utils` en Debian/Ubuntu), sin habilitar repositorios permanentemente.
+
+```sh
+sh install.sh --modules shortcuts --dry-run
+sh install.sh --modules shortcuts
+fsignal 14                 # Mosaico del fork
+lt-shortcut layout d       # Dwindle (fsignal:4)
+lt-shortcut gap j          # Aumentar huecos (fsignal:40)
+lt-shortcut border k       # Aumentar borde (fsignal:31)
+```
+
+`lt-shortcut` admite ahora `layout`, `gap` y `border` con teclas fijas. Se recuperan **14 layouts**, **17 ajustes de gaps** y **3 operaciones de bordes**. La tecla de layouts sigue el esquema de `agusc01/bash`, pero la correspondencia de señales se corrigió para coincidir con la tabla real de `agusc01/dwm` (por ejemplo, `M`→11, `F`→12, `f`→13). No recompila dwm ni modifica `config.h`.
+
+Estos cambios del dispatcher pueden usarse de forma manual aunque el ejecutable C de `dshortcuts` todavía tenga el menú anterior. El menú actualizado se distribuye como perfil versionado en `agusc01/linux-setup` y sus fuentes persistentes solo se migran con una acción explícita y copia de respaldo.
+
 ## Integración con dshortcuts en C
 
 `lt-shortcut` es un dispatcher POSIX sin `eval` ni interpretación libre de claves: `volume` y `brightness` llaman los módulos respectivos, `rotate` reutiliza las funciones Fish, y los accesos a Wi-Fi/Bluetooth son consultas mediante Rofi. El menú de C, su compilación y el atajo `Super+P` son responsabilidad de `linux-setup`, no se copian ni modifican archivos del fork desde linux-tools.

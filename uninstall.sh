@@ -84,7 +84,8 @@ $config_home/linux-tools/rofi/$name.rasi"
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     plan="$plan
-$HOME/.local/bin/lt-shortcut"
+$HOME/.local/bin/lt-shortcut
+$HOME/.local/bin/fsignal"
 fi
 if [ "$want_aliases" -eq 1 ]; then
     for name in g ga gaA gau gs gss gct gctm gpull gpullremote gamend; do
