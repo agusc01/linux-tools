@@ -13,6 +13,7 @@ done
 sh "$root/install.sh" --dry-run | grep -q 'r90.fish'
 sh "$root/install.sh" --modules fish,rotate --dry-run >/dev/null
 sh "$root/install.sh" --modules fish,rotate,audio,brightness --dry-run | grep -q lt-volume
+sh "$root/install.sh" --modules shortcuts --no-deps --dry-run | grep -q fsignal
 sh "$root/install.sh" --modules aliases --dry-run | grep -q 'gaA'
 sh "$root/tests/audio-brightness.sh"
 sh "$root/tests/cherrytrail-audio.sh"
@@ -23,6 +24,7 @@ sh "$root/tests/rofi.sh"
 sh "$root/tests/rofi-menus.sh"
 sh "$root/tests/rofi-system.sh"
 sh "$root/tests/shortcuts.sh"
+sh "$root/tests/fsignal.sh"
 sh "$root/tests/friendly-commands.sh"
 
 # Las dependencias se inspeccionan sin ejecutar apk/apt/doas/sudo ni alterar grupos.
@@ -118,11 +120,13 @@ EOF
     test -f "$tmp/home/config/fish/functions/cdshortcuts.fish"
     setup_env sh "$root/install.sh" --modules shortcuts --no-deps >/dev/null
     test -x "$tmp/home/.local/bin/lt-shortcut"
+    test -x "$tmp/home/.local/bin/fsignal"
     setup_env sh "$root/uninstall.sh" --modules aliases >/dev/null
     test ! -e "$tmp/home/.local/bin/gs"
     test ! -e "$tmp/home/config/fish/functions/cdwm.fish"
     setup_env sh "$root/uninstall.sh" --modules shortcuts >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-shortcut"
+    test ! -e "$tmp/home/.local/bin/fsignal"
     setup_env sh "$root/uninstall.sh" --modules rofi >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-rofi"
     test ! -e "$tmp/home/.local/bin/rofi_launcher"
