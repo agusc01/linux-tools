@@ -8,7 +8,7 @@ modules=fish,rotate
 dry_run=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi,shortcuts] [--dry-run]'; exit 0 ;;
+        --help|-h) echo 'Uso: sh uninstall.sh [--modules fish,rotate,audio,brightness,wifi,bluetooth,rofi,shortcuts,aliases] [--dry-run]'; exit 0 ;;
         --modules)
             [ "$#" -ge 2 ] || { echo 'Falta valor para --modules.' >&2; exit 2; }
             modules=$2; shift 2 ;;
@@ -37,11 +37,19 @@ $HOME/.local/bin/lt-audio-save
 $HOME/.local/share/linux-tools/lib/admin-paths.sh
 $HOME/.local/share/linux-tools/lib/audio-hardware.sh
 $config_home/fish/functions/lt_audio.fish"
+    for name in s0 s1 smute sunmute stogglemute; do
+        plan="$plan
+$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_brightness" -eq 1 ]; then
     plan="$plan
 $HOME/.local/bin/lt-brightness
 $config_home/fish/functions/lt_brightness.fish"
+    for name in b0 b1; do
+        plan="$plan
+$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_wifi" -eq 1 ]; then
     plan="$plan
@@ -57,10 +65,24 @@ if [ "$want_rofi" -eq 1 ]; then
     plan="$plan
 $HOME/.local/bin/lt-rofi
 $config_home/fish/functions/lt_rofi.fish"
+    for name in rofi_launcher rofi_runner rofi_window rofi_menu; do
+        plan="$plan
+$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     plan="$plan
 $HOME/.local/bin/lt-shortcut"
+fi
+if [ "$want_aliases" -eq 1 ]; then
+    for name in g ga gaA gau gs gss gct gctm gpull gpullremote gamend; do
+        plan="$plan
+$HOME/.local/bin/$name"
+    done
+    for name in dw dk dc pic cdwm cst cslock cdshortcuts; do
+        plan="$plan
+$config_home/fish/functions/$name.fish"
+    done
 fi
 while IFS= read -r target; do
     [ -n "$target" ] || continue
