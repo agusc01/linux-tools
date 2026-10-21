@@ -1,4 +1,5 @@
 #!/bin/sh
 # linux-tools-managed: agusc01/linux-tools
-# Acceso directo portable: sin argumentos obligatorios, autocompletable en Fish.
+# Acceso directo portable, autocompletable en Fish.
+[ "$#" -eq 0 ] || { echo 'Uso: rofi_launcher (sin argumentos)' >&2; exit 2; }
 exec lt-rofi apps
