@@ -1,0 +1,35 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Menú visual de volumen. Backend compartido con s0/s1 (ALSA/Pulse/PipeWire).
+set -eu
+[ "$#" -eq 0 ] || { echo 'Uso: rofi_volume (sin argumentos)' >&2; exit 2; }
+command -v rofi >/dev/null 2>&1 || { echo 'Error: falta Rofi.' >&2; exit 1; }
+command -v lt-volume >/dev/null 2>&1 || { echo 'Error: falta lt-volume.' >&2; exit 1; }
+[ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || {
+    echo 'Error: rofi_volume necesita una sesión gráfica.' >&2; exit 1
+}
+while :; do
+    if status=$(lt-volume status 2>&1); then :; else
+        rofi -e "No se puede consultar el audio:\n$status" || :
+        echo "$status" >&2
+        exit 1
+    fi
+    selected=$(printf '%s\n' 'Bajar 10%' 'Subir 10%' 'Silenciar' 'Activar sonido' \
+        '0%' '10%' '20%' '30%' '40%' '50%' '60%' '70%' '80%' '90%' '100%' |
+        rofi -dmenu -no-custom -p 'Volumen' -mesg "$status") || exit 0
+    case "$selected" in
+        'Bajar 10%') lt-volume down --notify ;;
+        'Subir 10%') lt-volume up --notify ;;
+        Silenciar) lt-volume mute --notify ;;
+        'Activar sonido') lt-volume unmute --notify ;;
+        0%) lt-volume set 0 --notify; exit $? ;;
+        10%|20%|30%|40%|50%|60%|70%|80%|90%|100%)
+            level=${selected%%%}
+            # Como en el menú anterior, elegir un volumen positivo reactiva audio.
+            lt-volume unmute >/dev/null
+            lt-volume set "$level" --notify
+            exit $? ;;
+        '') exit 0 ;;
+        *) echo 'Opción de volumen desconocida; no se aplicó ningún cambio.' >&2; exit 2 ;;
+    esac
+done

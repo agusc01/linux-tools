@@ -1,0 +1,58 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Marcadores web desde el antiguo agusc01/bash, sin eval ni URLs arbitrarias.
+set -eu
+
+usage() { echo 'Uso: rofi_internet (sin argumentos)' >&2; }
+[ "$#" -eq 0 ] || { usage; exit 2; }
+command -v rofi >/dev/null 2>&1 || {
+    echo 'Error: falta Rofi. Instalá el módulo rofi.' >&2
+    exit 1
+}
+[ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || {
+    echo 'Error: rofi_internet necesita una sesión gráfica.' >&2
+    exit 1
+}
+browser=''
+for candidate in firefox-esr firefox librewolf; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+        browser=$candidate
+        break
+    fi
+done
+[ -n "$browser" ] || {
+    rofi -e 'Falta Firefox o LibreWolf. Instalá uno antes de abrir marcadores.' || :
+    echo 'Error: no se encontró Firefox o LibreWolf.' >&2
+    exit 1
+}
+
+selection=$(printf '%s\n' \
+    'IA (DuckDuckGo)' 'GitHub' 'Pestaña nueva' 'DuckDuckGo' \
+    'Google' 'Gmail' 'YouTube' 'Spotify' 'Google Drive' \
+    'Traducir EN a ES' 'Traducir ES a EN' 'WhatsApp Web' |
+    rofi -dmenu -no-custom -p 'Internet' -mesg 'Elegí un marcador') || exit 0
+case "$selection" in
+    'IA (DuckDuckGo)') url='https://duck.ai/' ;;
+    GitHub) url='https://github.com/' ;;
+    'Pestaña nueva') url='about:blank' ;;
+    DuckDuckGo) url='https://duckduckgo.com/' ;;
+    Google) url='https://www.google.com/' ;;
+    Gmail) url='https://mail.google.com/' ;;
+    YouTube) url='https://www.youtube.com/' ;;
+    Spotify) url='https://open.spotify.com/' ;;
+    'Google Drive') url='https://drive.google.com/' ;;
+    'Traducir EN a ES') url='https://translate.google.co.uk/?sl=en&tl=es&op=translate' ;;
+    'Traducir ES a EN') url='https://translate.google.co.uk/?sl=es&tl=en&op=translate' ;;
+    'WhatsApp Web') url='https://web.whatsapp.com/' ;;
+    '') exit 0 ;;
+    *) echo 'Selección no permitida; no se abrirá ningún sitio.' >&2; exit 2 ;;
+esac
+
+privacy=$(printf '%s\n' 'Normal' 'Privada' |
+    rofi -dmenu -no-custom -p 'Navegación' -mesg 'Elegí el modo de navegación') || exit 0
+case "$privacy" in
+    Normal) "$browser" --new-window "$url" >/dev/null 2>&1 & ;;
+    Privada) "$browser" --new-window --private-window "$url" >/dev/null 2>&1 & ;;
+    '') exit 0 ;;
+    *) echo 'Modo de navegación desconocido; no se abrirá el sitio.' >&2; exit 2 ;;
+esac

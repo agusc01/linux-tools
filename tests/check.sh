@@ -20,6 +20,7 @@ sh "$root/tests/audio-profiles.sh"
 sh "$root/tests/admin-paths.sh"
 sh "$root/tests/connectivity.sh"
 sh "$root/tests/rofi.sh"
+sh "$root/tests/rofi-menus.sh"
 sh "$root/tests/shortcuts.sh"
 sh "$root/tests/friendly-commands.sh"
 
@@ -100,6 +101,9 @@ EOF
     test -f "$tmp/home/config/fish/functions/lt_rofi.fish"
     test -x "$tmp/home/.local/bin/rofi_launcher"
     test -x "$tmp/home/.local/bin/rofi_menu"
+    for menu in rofi_internet rofi_volume rofi_brightness; do
+        test -x "$tmp/home/.local/bin/$menu"
+    done
     setup_env sh "$root/install.sh" --modules aliases --no-deps >/dev/null
     setup_env sh "$root/install.sh" --modules aliases --verify | grep -Fq 'Verificación correcta.'
     setup_env fish -c 'command -sq g; and command -sq gs; and functions -q dw; and functions -q cdwm'
@@ -115,6 +119,9 @@ EOF
     setup_env sh "$root/uninstall.sh" --modules rofi >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-rofi"
     test ! -e "$tmp/home/.local/bin/rofi_launcher"
+    for menu in rofi_internet rofi_volume rofi_brightness; do
+        test ! -e "$tmp/home/.local/bin/$menu"
+    done
     setup_env sh "$root/uninstall.sh" --modules wifi,bluetooth >/dev/null
     test ! -e "$tmp/home/.local/bin/lt-wifi"
     test ! -e "$tmp/home/.local/bin/lt-bluetooth"

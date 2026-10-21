@@ -69,6 +69,10 @@ $config_home/fish/functions/lt_rofi.fish"
         plan="$plan
 $HOME/.local/bin/$name"
     done
+    for name in rofi_internet rofi_volume rofi_brightness; do
+        plan="$plan
+$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     plan="$plan

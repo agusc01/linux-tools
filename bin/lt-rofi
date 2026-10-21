@@ -46,12 +46,23 @@ case "$action" in
     wifi) show_info 'Wi-Fi · redes visibles (solo consulta)' lt-wifi list ;;
     bluetooth) show_info 'Bluetooth · dispositivos (solo consulta)' lt-bluetooth devices ;;
     menu)
-        selected=$(printf '%s\n' 'Aplicaciones' 'Comandos' 'Ventanas' 'Redes Wi-Fi' 'Dispositivos Bluetooth' |
-            rofi -dmenu -p 'linux-tools') || exit 0
+        selected=$(printf '%s\n' 'Aplicaciones' 'Comandos' 'Ventanas' 'Internet (marcadores)' 'Volumen' 'Brillo' 'Redes Wi-Fi' 'Dispositivos Bluetooth' |
+            rofi -dmenu -no-custom -p 'linux-tools') || exit 0
         case "$selected" in
             Aplicaciones) exec rofi -show drun ;;
             Comandos) exec rofi -show run ;;
             Ventanas) exec rofi -show window ;;
+            'Internet (marcadores)'|'Volumen'|'Brillo')
+                case "$selected" in
+                    'Internet (marcadores)') script=rofi_internet ;;
+                    Volumen) script=rofi_volume ;;
+                    Brillo) script=rofi_brightness ;;
+                esac
+                command -v "$script" >/dev/null 2>&1 || {
+                    rofi -e "Falta $script. Actualizá e instalá el módulo Rofi." || :
+                    exit 1
+                }
+                exec "$script" ;;
             'Redes Wi-Fi') show_info 'Wi-Fi · redes visibles (solo consulta)' lt-wifi list ;;
             'Dispositivos Bluetooth') show_info 'Bluetooth · dispositivos (solo consulta)' lt-bluetooth devices ;;
             '') exit 0 ;;
