@@ -8,7 +8,7 @@ command -v xsetroot >/dev/null 2>&1 || { echo 'Error: falta xsetroot (X11).' >&2
 [ -n "${DISPLAY:-}" ] || { echo 'Error: rofi_layout necesita una sesión X11.' >&2; exit 1; }
 theme="${XDG_CONFIG_HOME:-$HOME/.config}/linux-tools/rofi/layout.rasi"
 options=$(printf '%s\n' '[] = | Mosaico' '[M] | Monóculo' '[@] | Espiral' \
-    '[\\] | Dwindle' 'H[] | Deck' 'TTT | Pila inferior' '=== | Pila horizontal' \
+    '[\] | Dwindle' 'H[] | Deck' 'TTT | Pila inferior' '=== | Pila horizontal' \
     'HHH | Cuadrícula' '### | Filas' '--- | Cuadrícula horizontal' \
     '::: | Cuadrícula sin huecos' '|M| | Principal centrada' \
     '>M> | Principal flotante centrada' '><> | Flotante')
