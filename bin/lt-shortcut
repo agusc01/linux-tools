@@ -3,7 +3,7 @@
 # Dispatcher de teclas dshortcuts: acciones cerradas, sin eval ni Bash.
 set -eu
 usage() {
-    echo 'Uso: lt-shortcut volume|brightness|rotate|wifi|bluetooth|rofi TECLA' >&2
+    echo 'Uso: lt-shortcut volume|brightness|rotate|wifi|bluetooth|rofi|layout|gap|border TECLA' >&2
 }
 [ "$#" -eq 2 ] || { usage; exit 2; }
 section=$1
@@ -67,11 +67,46 @@ $result" ;;
     rofi:a) need lt-rofi; exec lt-rofi apps ;;
     rofi:r) need lt-rofi; exec lt-rofi run ;;
     rofi:w) need lt-rofi; exec lt-rofi windows ;;
+    layout:t) signal=14 ;;
+    layout:m) signal=1 ;;
+    layout:s) signal=2 ;;
+    layout:w) signal=3 ;;
+    layout:d) signal=4 ;;
+    layout:b) signal=5 ;;
+    layout:B) signal=6 ;;
+    layout:g) signal=7 ;;
+    layout:r) signal=8 ;;
+    layout:h) signal=9 ;;
+    layout:l) signal=10 ;;
+    layout:M) signal=11 ;;
+    layout:F) signal=12 ;;
+    layout:f) signal=13 ;;
+    gap:t) signal=56 ;;
+    gap:i) signal=55 ;;
+    gap:s) signal=74 ;;
+    gap:j) signal=40 ;;
+    gap:J) signal=41 ;;
+    gap:k) signal=42 ;;
+    gap:K) signal=43 ;;
+    gap:u) signal=44 ;;
+    gap:U) signal=45 ;;
+    gap:1) signal=46 ;;
+    gap:2) signal=47 ;;
+    gap:3) signal=48 ;;
+    gap:4) signal=49 ;;
+    gap:5) signal=51 ;;
+    gap:6) signal=52 ;;
+    gap:7) signal=53 ;;
+    gap:8) signal=54 ;;
+    border:j) signal=30 ;;
+    border:k) signal=31 ;;
+    border:s) signal=32 ;;
     *) usage; exit 2 ;;
 esac
 case "$section" in
     volume) need lt-volume; exec lt-volume set "$level" --notify ;;
     brightness) need lt-brightness; exec lt-brightness set "$level" --notify ;;
+    layout|gap|border) need fsignal; exec fsignal "$signal" ;;
     rotate)
         need fish
         # Elección fija, nunca se incorpora texto libre a la shell.
