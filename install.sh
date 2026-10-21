@@ -85,6 +85,10 @@ if [ "$want_rofi" -eq 1 ]; then
     for name in rofi_launcher rofi_runner rofi_window rofi_menu; do
         add_plan "bin/$name" "$HOME/.local/bin/$name"
     done
+    # Los nuevos menús dependen de motores instalados de forma independiente.
+    for name in rofi_internet rofi_volume rofi_brightness; do
+        add_plan "bin/$name" "$HOME/.local/bin/$name"
+    done
 fi
 if [ "$want_shortcuts" -eq 1 ]; then
     add_plan 'bin/lt-shortcut' "$HOME/.local/bin/lt-shortcut"
@@ -197,7 +201,7 @@ verify_functions() {
             echo 'Error: falta lt-rofi, función Fish o ejecutable rofi.' >&2
             failed=1
         else
-            echo 'OK: lt-rofi preparado. Abrilo desde dwm (sesión X11).'
+            echo 'OK: lt-rofi preparado. Los menús volumen/brillo necesitan los motores correspondientes.'
         fi
     fi
     if [ "$want_shortcuts" -eq 1 ]; then
@@ -227,7 +231,7 @@ verify_functions() {
         done
     fi
     if [ "$want_rofi" -eq 1 ]; then
-        for name in rofi_launcher rofi_runner rofi_window rofi_menu; do
+        for name in rofi_launcher rofi_runner rofi_window rofi_menu rofi_internet rofi_volume rofi_brightness; do
             if [ ! -x "$HOME/.local/bin/$name" ] || ! lt_source_owned "$HOME/.local/bin/$name"; then
                 echo "Error: falta acceso directo de Rofi: $name" >&2
                 failed=1
