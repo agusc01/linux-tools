@@ -1,0 +1,4 @@
+#!/bin/sh
+# linux-tools-managed: agusc01/linux-tools
+# Acceso directo portable: sin argumentos obligatorios, autocompletable en Fish.
+exec lt-volume down --notify
